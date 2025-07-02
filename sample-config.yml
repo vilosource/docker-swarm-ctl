@@ -1,0 +1,5 @@
+current_context: dev
+contexts:
+  - name: dev
+    api_url: http://localhost:8000
+    token: dev-secret-token
