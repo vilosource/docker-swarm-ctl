@@ -14,34 +14,73 @@ def setup_e2e_environment():
 
     # 2. Get the IP address of the swarm-manager container
     print("Getting Swarm Manager IP...")
-    result = subprocess.run(
-        ["docker", "inspect", "-f", '{{.NetworkSettings.Networks.test_net.IPAddress}}', 
-         "$(docker-compose -f docker-compose.test.yml ps -q swarm-manager)"],
-        capture_output=True, text=True, check=True
+    swarm_manager_container_id = ""
+    for _ in range(60): # Wait for container to be running
+        result = subprocess.run(
+            "docker ps -q --filter \"name=docker-swarm-ctl-swarm-manager-1\"",
+            capture_output=True, text=True, shell=True
+        )
+        if result.stdout.strip():
+            swarm_manager_container_id = result.stdout.strip()
+            break
+        time.sleep(1)
+    else:
+        raise RuntimeError("swarm-manager container did not start in time.")
+
+    print(f"Swarm Manager Container ID: {swarm_manager_container_id}")
+
+    # Get the Docker Compose project name
+    project_name_result = subprocess.run(
+        "docker compose -f docker-compose.test.yml config --format json | jq -r .name",
+        capture_output=True, text=True, check=True, shell=True
     )
-    swarm_manager_ip = result.stdout.strip()
+    project_name = project_name_result.stdout.strip()
+    full_network_name = f"{project_name}_test_net"
+    print(f"Full network name: {full_network_name}")
+
+    result = subprocess.run(
+        f"docker inspect {swarm_manager_container_id}",
+        capture_output=True, text=True, check=True, shell=True
+    )
+    import json
+    inspect_output = json.loads(result.stdout.strip())[0]
+    swarm_manager_ip = inspect_output["NetworkSettings"]["Networks"][full_network_name]["IPAddress"]
     print(f"Swarm Manager IP: {swarm_manager_ip}")
 
     # 3. Wait for the DinD daemon to be ready
     print("Waiting for Swarm Manager Docker daemon to be ready...")
     docker_host = f"tcp://{swarm_manager_ip}:2375"
-    for _ in range(60): # Max 60 seconds wait
+    for _ in range(120): # Increased timeout to 120 seconds
         try:
             subprocess.run(["docker", "-H", docker_host, "info"], check=True, capture_output=True)
             break
-        except subprocess.CalledProcessError:
+        except subprocess.CalledProcessError as e:
+            print(f"DinD daemon not ready yet: {e.stderr.strip()}")
             time.sleep(1)
     else:
         raise RuntimeError("DinD Docker daemon did not become ready in time.")
     print("Swarm Manager Docker daemon is ready.")
 
+    # Ensure the DinD node is not already part of a swarm
+    print("Ensuring DinD node is not part of a swarm...")
+    subprocess.run(["docker", "-H", docker_host, "swarm", "leave", "--force"], check=False, capture_output=True)
+
     # 4. Initialize the Swarm on the DinD manager
     print("Initializing Swarm on manager...")
     subprocess.run(["docker", "-H", docker_host, "swarm", "init", "--advertise-addr", swarm_manager_ip], check=True)
 
-    # 5. Build the dsctl-server Docker image
-    print("Building dsctl-server image...")
-    subprocess.run(["docker", "build", "-t", "dsctl-server-test", "."], check=True)
+    # Get the GID of docker.sock inside the DinD container
+    print("Getting docker.sock GID from DinD...")
+    docker_sock_gid_result = subprocess.run(
+        ["docker", "-H", docker_host, "run", "--rm", "-v", "/var/run/docker.sock:/var/run/docker.sock", "alpine", "stat", "-c", "%g", "/var/run/docker.sock"],
+        capture_output=True, text=True, check=True
+    )
+    docker_sock_gid = docker_sock_gid_result.stdout.strip()
+    print(f"Docker.sock GID in DinD: {docker_sock_gid}")
+
+    # 5. Build the dsctl-server Docker image on the DinD daemon
+    print("Building dsctl-server image on DinD daemon...")
+    subprocess.run(["docker", "-H", docker_host, "build", "-t", "dsctl-server-test", "."], check=True)
 
     # 6. Deploy dsctl-server as a Swarm service
     print("Deploying dsctl-server as a service on the Swarm...")
@@ -53,6 +92,7 @@ def setup_e2e_environment():
          "--env", "AUTH_METHOD=static",
          "--env", "STATIC_TOKEN_SECRET=dev-secret-token",
          "--env", "LOG_LEVEL=INFO",
+         "--user", f"1000:{docker_sock_gid}", # Use dynamic GID
          "dsctl-server-test"],
         check=True
     )

@@ -73,7 +73,22 @@ While the E2E tests are running, the `dsctl-server` API will be accessible on yo
 *   **Swagger UI:** `http://localhost:8000/docs`
 *   **ReDoc:** `http://localhost:8000/redoc`
 
-You can use these interfaces to manually send requests to the API and observe responses. For protected endpoints, use the `dev-secret-token` as the Bearer token.
+You can use these interfaces to manually send requests to the API and observe responses.
+
+#### Authenticating in Swagger UI
+
+To interact with protected API endpoints (e.g., `/cluster/info`), you need to authenticate within the Swagger UI:
+
+1.  **Open Swagger UI:** Navigate to `http://localhost:8000/docs`.
+2.  **Click "Authorize":** In the top right corner of the page, click the "Authorize" button (or the lock icon).
+3.  **Enter Bearer Token:** In the dialog box that appears, enter the following in the "Value" field:
+    ```
+    Bearer dev-secret-token
+    ```
+    (The `dev-secret-token` is defined in your project's `.env` file and is used for local development and testing.)
+4.  **Confirm Authorization:** Click the "Authorize" button in the dialog, then click "Close".
+
+You can now "Try it out" on protected endpoints, and your requests will include the necessary `Authorization` header.
 
 ### Inspecting the Simulated Docker Swarm
 

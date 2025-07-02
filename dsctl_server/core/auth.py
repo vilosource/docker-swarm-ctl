@@ -1,7 +1,9 @@
 from abc import ABC, abstractmethod
-from fastapi import Request, HTTPException, Depends
+from fastapi import HTTPException, Depends
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from starlette.status import HTTP_401_UNAUTHORIZED
+from abc import ABC, abstractmethod
 
 from dsctl_server.core.config import settings
 
@@ -11,16 +13,11 @@ class UserPrincipal(BaseModel):
 
 class AuthStrategy(ABC):
     @abstractmethod
-    def authenticate(self, request: Request) -> UserPrincipal | None:
+    def authenticate(self, token: str) -> UserPrincipal | None:
         pass
 
 class StaticTokenAuthStrategy(AuthStrategy):
-    def authenticate(self, request: Request) -> UserPrincipal | None:
-        auth_header = request.headers.get("Authorization")
-        if not auth_header or not auth_header.startswith("Bearer "):
-            return None
-        
-        token = auth_header.split(" ")[1]
+    def authenticate(self, token: str) -> UserPrincipal | None:
         if token == settings.static_token_secret:
             # For static token, we can assign a default user and role.
             return UserPrincipal(username="static_user", roles=["admin"])
@@ -32,11 +29,14 @@ def get_auth_strategy() -> AuthStrategy:
     # Future auth methods like 'entra_id' would be added here.
     raise NotImplementedError(f"Auth method '{settings.auth_method}' not implemented.")
 
+# This defines the security scheme for OpenAPI (Swagger UI)
+oauth2_scheme = HTTPBearer()
+
 def get_current_user(
-    request: Request,
+    credentials: HTTPAuthorizationCredentials = Depends(oauth2_scheme),
     auth_strategy: AuthStrategy = Depends(get_auth_strategy)
 ) -> UserPrincipal:
-    user = auth_strategy.authenticate(request)
+    user = auth_strategy.authenticate(credentials.credentials)
     if not user:
         raise HTTPException(
             status_code=HTTP_401_UNAUTHORIZED,
