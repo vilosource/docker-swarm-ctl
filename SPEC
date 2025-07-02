@@ -1,0 +1,366 @@
+dsctl: Docker Swarm Control CLI & API Server Specification
+
+Overview
+
+dsctl is a secure CLI and API-based tool for managing Docker Swarm clusters without requiring SSH access. It consists of:
+
+dsctl-server: A FastAPI-based HTTPS server deployed on Swarm manager nodes.
+
+dsctl: A Python-based CLI client that communicates with the API server.
+
+Goals
+
+Centralized control of Swarm operations
+
+Secure token-based access
+
+CLI experience similar to kubectl
+
+Compatible with GitOps workflows
+
+.dsctl/config.yml Format
+
+current_context: prod
+
+contexts:
+  prod:
+    api_url: https://dsctl-server-prod.local:8443
+    token: eyJhbGciOiJIUzI1NiIsIn...
+  dev:
+    api_url: https://dsctl-server-dev.local:8443
+    token: eyJhbGciOiJIUzI1NiIsIn...
+
+Authentication
+
+Token-based (Authorization: Bearer <token>)
+
+Token roles: admin, ops, read-only
+
+Optional mTLS in future
+
+Server API Endpoints
+
+Cluster
+
+Method
+
+Endpoint
+
+Description
+
+GET
+
+/ping
+
+Health check
+
+GET
+
+/cluster/info
+
+Swarm info
+
+GET
+
+/version
+
+Server and Docker version
+
+Stacks
+
+Method
+
+Endpoint
+
+Description
+
+POST
+
+/stacks/deploy
+
+Deploy stack
+
+GET
+
+/stacks
+
+List stacks
+
+DELETE
+
+/stacks/{name}
+
+Remove stack
+
+GET
+
+/stacks/{name}/tasks
+
+List tasks in stack
+
+Secrets
+
+Method
+
+Endpoint
+
+Description
+
+POST
+
+/secrets
+
+Create secret
+
+GET
+
+/secrets
+
+List secrets
+
+DELETE
+
+/secrets/{name}
+
+Delete secret
+
+GET
+
+/secrets/{name}
+
+Inspect secret meta
+
+Configs
+
+Method
+
+Endpoint
+
+Description
+
+POST
+
+/configs
+
+Create config
+
+GET
+
+/configs
+
+List configs
+
+DELETE
+
+/configs/{name}
+
+Delete config
+
+GET
+
+/configs/{name}
+
+Inspect config meta
+
+Services
+
+Method
+
+Endpoint
+
+Description
+
+GET
+
+/services
+
+List services
+
+GET
+
+/services/{name}
+
+Inspect service
+
+PATCH
+
+/services/{name}
+
+Update service
+
+DELETE
+
+/services/{name}
+
+Remove service
+
+Nodes
+
+Method
+
+Endpoint
+
+Description
+
+GET
+
+/nodes
+
+List nodes
+
+GET
+
+/nodes/{id}
+
+Inspect node
+
+POST
+
+/nodes/{id}/drain
+
+Set to drain
+
+POST
+
+/nodes/{id}/active
+
+Set to active
+
+Containers & Tasks
+
+Method
+
+Endpoint
+
+Description
+
+GET
+
+/services/{name}/tasks
+
+List tasks
+
+GET
+
+/containers
+
+List containers
+
+GET
+
+/containers/{id}
+
+Inspect container
+
+Logs & Exec
+
+Method
+
+Endpoint
+
+Description
+
+GET
+
+/logs/{service}
+
+Fetch service logs
+
+POST
+
+/exec/{node}
+
+Run command on node
+
+Auth
+
+Method
+
+Endpoint
+
+Description
+
+POST
+
+/auth/token
+
+Validate token
+
+CLI Command Mapping
+
+CLI Command
+
+API Endpoint
+
+dsctl deploy -f file.yml
+
+POST /stacks/deploy
+
+dsctl stack ls
+
+GET /stacks
+
+dsctl stack rm <name>
+
+DELETE /stacks/{name}
+
+dsctl secret create ...
+
+POST /secrets
+
+dsctl secret ls
+
+GET /secrets
+
+dsctl secret rm <name>
+
+DELETE /secrets/{name}
+
+dsctl service ls
+
+GET /services
+
+dsctl service update <name> ...
+
+PATCH /services/{name}
+
+dsctl nodes ls
+
+GET /nodes
+
+dsctl node drain <id>
+
+POST /nodes/{id}/drain
+
+dsctl exec <node> -- docker ps
+
+POST /exec/{node}
+
+dsctl logs <service>
+
+GET /logs/{service}
+
+Implementation Notes
+
+Server wraps Docker SDK (docker-py) or shell (subprocess)
+
+TLS required (self-signed or internal CA)
+
+Audit logging for all operations
+
+Rate limiting and token revocation in future
+
+Future Extensions
+
+GitOps support
+
+Web dashboard
+
+Role-based access
+
+Service metrics and health checks
+
+Canary deploys and rollbacks
+
+This document defines the complete interface and behavior of both dsctl and dsctl-server, enabling a fully remote-controlled, secure Swarm environment.
+
