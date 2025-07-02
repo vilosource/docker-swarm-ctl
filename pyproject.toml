@@ -21,6 +21,10 @@ pydantic-settings = "^2.10.1"
 
 [tool.poetry.scripts]
 dsctl = "dsctl_cli.main:main"
+start-e2e-env = "start_e2e_env:start_environment"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.4.1"
 
 [build-system]
 requires = ["poetry-core"]
