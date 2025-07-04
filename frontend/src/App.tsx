@@ -5,6 +5,7 @@ import ProtectedRoute from '@/components/auth/ProtectedRoute'
 import Login from '@/pages/Login'
 import Dashboard from '@/pages/Dashboard'
 import Containers from '@/pages/Containers'
+import ContainerDetails from '@/pages/ContainerDetails'
 import Images from '@/pages/Images'
 import Users from '@/pages/Users'
 import Profile from '@/pages/Profile'
@@ -20,6 +21,7 @@ function App() {
         <Route element={<LayoutFull />}>
           <Route path="/" element={<Dashboard />} />
           <Route path="/containers" element={<Containers />} />
+          <Route path="/containers/:id" element={<ContainerDetails />} />
           <Route path="/images" element={<Images />} />
           <Route path="/users" element={<Users />} />
           <Route path="/profile" element={<Profile />} />

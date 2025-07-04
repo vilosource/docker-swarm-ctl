@@ -8,6 +8,7 @@ import logging
 from app.core.config import settings
 from app.core.exceptions import AppException
 from app.api.v1.api import api_router
+from app.api.v1.websocket import containers_router as ws_containers_router
 from app.db.session import engine
 from app.db.base import Base
 from app.db.base_class import *  # noqa - Import all models
@@ -110,6 +111,9 @@ async def app_exception_handler(request: Request, exc: AppException):
 
 # Include API router
 app.include_router(api_router, prefix=settings.api_v1_str)
+
+# Include WebSocket router
+app.include_router(ws_containers_router, prefix="/ws", tags=["websocket"])
 
 
 @app.get("/")

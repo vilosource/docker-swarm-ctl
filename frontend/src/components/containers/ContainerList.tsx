@@ -1,5 +1,6 @@
 import { Container } from '@/types'
 import { format } from 'date-fns'
+import { Link } from 'react-router-dom'
 
 interface ContainerListProps {
   containers: Container[]
@@ -57,7 +58,7 @@ export default function ContainerList({
             <tr key={container.id}>
               <td>
                 <h5 className="font-size-14 mb-1">
-                  <a href="#" className="text-dark">{container.name}</a>
+                  <Link to={`/containers/${container.id}`} className="text-dark">{container.name}</Link>
                 </h5>
                 <p className="text-muted mb-0 font-size-12">ID: {container.id}</p>
               </td>
@@ -95,6 +96,14 @@ export default function ContainerList({
               {canManage && (
                 <td>
                   <div className="btn-group btn-group-sm" role="group">
+                    <Link
+                      to={`/containers/${container.id}`}
+                      className="btn btn-light"
+                      data-bs-toggle="tooltip"
+                      title="View Details & Logs"
+                    >
+                      <i className="mdi mdi-eye"></i>
+                    </Link>
                     {container.state === 'running' ? (
                       <button
                         onClick={() => onStop(container)}

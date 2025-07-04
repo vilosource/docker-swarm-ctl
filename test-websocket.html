@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .section { margin: 20px 0; padding: 10px; border: 1px solid #ccc; }
+        input, button { margin: 5px; padding: 5px; }
+        #logs { 
+            background: #000; 
+            color: #0f0; 
+            padding: 10px; 
+            height: 300px; 
+            overflow-y: auto; 
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .error { color: #f00; }
+        .success { color: #0f0; }
+        .info { color: #ff0; }
+    </style>
+</head>
+<body>
+    <h1>Docker WebSocket Test</h1>
+    
+    <div class="section">
+        <h2>1. Authentication</h2>
+        <label>JWT Token: <input type="text" id="token" style="width: 500px" placeholder="Paste your JWT token here"></label>
+        <br>
+        <button onclick="testApi()">Test API Connection</button>
+        <div id="apiResult"></div>
+    </div>
+
+    <div class="section">
+        <h2>2. WebSocket Connection</h2>
+        <label>Container ID: <input type="text" id="containerId" placeholder="Enter container ID"></label>
+        <br>
+        <label>Follow: <input type="checkbox" id="follow" checked></label>
+        <label>Tail: <input type="number" id="tail" value="100"></label>
+        <br>
+        <button onclick="connect()">Connect</button>
+        <button onclick="disconnect()">Disconnect</button>
+        <button onclick="clearLogs()">Clear Logs</button>
+    </div>
+
+    <div class="section">
+        <h2>Logs</h2>
+        <div id="logs"></div>
+    </div>
+
+    <script>
+        let ws = null;
+        const logs = document.getElementById('logs');
+
+        function log(message, className = '') {
+            const timestamp = new Date().toLocaleTimeString();
+            logs.innerHTML += `<span class="${className}">[${timestamp}] ${message}</span>\n`;
+            logs.scrollTop = logs.scrollHeight;
+        }
+
+        async function testApi() {
+            const token = document.getElementById('token').value;
+            const resultDiv = document.getElementById('apiResult');
+            
+            if (!token) {
+                resultDiv.innerHTML = '<span style="color: red">Please enter a token</span>';
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/v1/users/me', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const user = await response.json();
+                    resultDiv.innerHTML = `<span style="color: green">✓ Token valid! User: ${user.username} (${user.role})</span>`;
+                    log('API test successful', 'success');
+                } else {
+                    const error = await response.text();
+                    resultDiv.innerHTML = `<span style="color: red">✗ Token invalid: ${response.status}</span>`;
+                    log(`API test failed: ${response.status} - ${error}`, 'error');
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<span style="color: red">✗ API Error: ${error.message}</span>`;
+                log(`API test error: ${error.message}`, 'error');
+            }
+        }
+
+        function connect() {
+            const token = document.getElementById('token').value;
+            const containerId = document.getElementById('containerId').value;
+            const follow = document.getElementById('follow').checked;
+            const tail = document.getElementById('tail').value;
+
+            if (!token || !containerId) {
+                alert('Please enter both token and container ID');
+                return;
+            }
+
+            if (ws) {
+                log('Closing existing connection...', 'info');
+                ws.close();
+            }
+
+            const wsUrl = `ws://localhost/ws/containers/${containerId}/logs?token=${token}&follow=${follow}&tail=${tail}&timestamps=true`;
+            log(`Connecting to: ${wsUrl}`, 'info');
+
+            try {
+                ws = new WebSocket(wsUrl);
+
+                ws.onopen = () => {
+                    log('WebSocket connected!', 'success');
+                };
+
+                ws.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        
+                        if (data.type === 'log') {
+                            log(`LOG: ${data.data}`);
+                        } else if (data.type === 'error') {
+                            log(`ERROR: ${data.message}`, 'error');
+                        } else if (data.type === 'ping') {
+                            log('Received ping', 'info');
+                        } else {
+                            log(`Unknown message type: ${JSON.stringify(data)}`, 'info');
+                        }
+                    } catch (e) {
+                        log(`Parse error: ${e.message}\nRaw message: ${event.data}`, 'error');
+                    }
+                };
+
+                ws.onerror = (error) => {
+                    log(`WebSocket error: ${error}`, 'error');
+                };
+
+                ws.onclose = (event) => {
+                    log(`WebSocket closed: Code ${event.code}, Reason: ${event.reason || 'No reason provided'}`, 'error');
+                    
+                    // Decode close codes
+                    const closeReasons = {
+                        1000: 'Normal closure',
+                        1001: 'Going away',
+                        1006: 'Abnormal closure (network error)',
+                        1008: 'Policy violation (authentication failure)',
+                        1009: 'Message too big',
+                        1011: 'Server error'
+                    };
+                    
+                    const reason = closeReasons[event.code] || 'Unknown';
+                    log(`Close code meaning: ${reason}`, 'info');
+                };
+
+            } catch (error) {
+                log(`Connection error: ${error.message}`, 'error');
+            }
+        }
+
+        function disconnect() {
+            if (ws) {
+                log('Disconnecting...', 'info');
+                ws.close();
+                ws = null;
+            }
+        }
+
+        function clearLogs() {
+            logs.innerHTML = '';
+        }
+
+        // Get token from localStorage if available
+        window.onload = () => {
+            const savedToken = localStorage.getItem('token');
+            if (savedToken) {
+                document.getElementById('token').value = savedToken;
+                log('Token loaded from localStorage', 'info');
+            }
+            
+            // List running containers
+            log('To get a container ID, run: docker ps', 'info');
+        };
+    </script>
+</body>
+</html>

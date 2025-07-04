@@ -20,8 +20,32 @@
     <!-- Vendor js -->
     <script src="/assets/js/vendor.min.js"></script>
     
+    <!-- Theme config initialization -->
+    <script>
+      // Initialize theme config to prevent JSON parse errors
+      window.config = window.config || {
+        theme: 'light',
+        layout: {
+          width: 'fluid',
+          position: 'fixed'
+        },
+        topbar: {
+          color: 'brand'
+        },
+        menu: {
+          color: 'dark'
+        },
+        sidebar: {
+          size: 'default',
+          user: false
+        }
+      };
+      window.defaultConfig = window.defaultConfig || window.config;
+    </script>
+    
     <!-- App js -->
-    <script src="/assets/js/app.min.js"></script>
+    <!-- Temporarily disabled due to theme config issues -->
+    <!-- <script src="/assets/js/app.min.js"></script> -->
     
     <script type="module" src="/src/main.tsx"></script>
   </body>

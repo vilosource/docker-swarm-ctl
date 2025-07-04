@@ -205,7 +205,7 @@ const LayoutFull: React.FC = () => {
                           </div>
                         </a>
                         {/* item*/}
-                        <a href="javascript:void(0);" className="dropdown-item notify-item">
+                        <button type="button" className="dropdown-item notify-item border-0 bg-transparent text-start w-100">
                           <div className="d-flex">
                             <img className="d-flex me-2 rounded-circle" src="assets/images/users/avatar-5.jpg" alt="Generic placeholder image" height="32" />
                             <div>
@@ -213,7 +213,7 @@ const LayoutFull: React.FC = () => {
                               <span className="font-12 mb-0">Developer</span>
                             </div>
                           </div>
-                        </a>
+                        </button>
                       </div>
                     </div>
                   </div>
