@@ -453,28 +453,71 @@ const LayoutFull: React.FC = () => {
 
             {/* LOGO */}
             <div className="logo-box">
-              <a href="index.html" className="logo logo-dark text-center">
+              <Link to="/" className="logo logo-dark text-center">
                 <span className="logo-sm">
-                  <img src="assets/images/logo-sm-dark.png" alt="" height="24" />
+                  <img src="/assets/images/logo-sm-dark.png" alt="" height="24" />
                 </span>
                 <span className="logo-lg">
-                  <img src="assets/images/logo-dark.png" alt="" height="20" />
+                  <img src="/assets/images/logo-dark.png" alt="" height="20" />
                 </span>
-              </a>
+              </Link>
 
-              <a href="index.html" className="logo logo-light text-center">
+              <Link to="/" className="logo logo-light text-center">
                 <span className="logo-sm">
-                  <img src="assets/images/logo-sm.png" alt="" height="24" />
+                  <img src="/assets/images/logo-sm.png" alt="" height="24" />
                 </span>
                 <span className="logo-lg">
-                  <img src="assets/images/logo-light.png" alt="" height="20" />
+                  <img src="/assets/images/logo-light.png" alt="" height="20" />
                 </span>
-              </a>
+              </Link>
             </div>
 
             <ul className="list-unstyled topnav-menu topnav-menu-left m-0">
               <li>
-                <button className="button-menu-mobile waves-effect waves-light">
+                <button 
+                  type="button"
+                  className="button-menu-mobile waves-effect waves-light"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    
+                    if (window.innerWidth < 992) {
+                      // Mobile - toggle sidebar
+                      const isSidebarOpen = document.body.classList.contains('sidebar-enable')
+                      
+                      if (isSidebarOpen) {
+                        // Close sidebar
+                        document.body.classList.remove('sidebar-enable')
+                        const backdrop = document.getElementById('custom-backdrop')
+                        if (backdrop) {
+                          backdrop.remove()
+                        }
+                      } else {
+                        // Open sidebar
+                        document.body.classList.add('sidebar-enable')
+                        
+                        // Add backdrop
+                        const existingBackdrop = document.getElementById('custom-backdrop')
+                        if (!existingBackdrop) {
+                          const backdrop = document.createElement('div')
+                          backdrop.id = 'custom-backdrop'
+                          backdrop.className = 'offcanvas-backdrop fade show'
+                          backdrop.style.cssText = 'position: fixed; top: 0; left: 0; z-index: 1050; width: 100vw; height: 100vh; background-color: #000; opacity: 0.5;'
+                          document.body.appendChild(backdrop)
+                          
+                          // Click backdrop to close
+                          backdrop.addEventListener('click', () => {
+                            document.body.classList.remove('sidebar-enable')
+                            backdrop.remove()
+                          })
+                        }
+                      }
+                    } else {
+                      // Desktop - toggle condensed menu
+                      document.body.classList.toggle('left-side-menu-condensed')
+                    }
+                  }}
+                >
                   <i className="fe-menu"></i>
                 </button>
               </li>
@@ -702,7 +745,7 @@ const LayoutFull: React.FC = () => {
                   
                   return (
                     <li key={item.name} className={isActive ? 'menuitem-active' : ''}>
-                      <Link to={item.href} className={isActive ? 'active' : ''}>
+                      <Link to={item.href} className={isActive ? 'active' : ''} data-menu-title={item.name}>
                         <i className={item.icon}></i>
                         <span> {item.name} </span>
                       </Link>

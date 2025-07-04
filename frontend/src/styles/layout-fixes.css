@@ -2,22 +2,35 @@
 
 /* Hide sidebar by default on mobile */
 @media (max-width: 991.98px) {
+  /* Override theme defaults for mobile */
+  body:not(.sidebar-enable) .left-side-menu {
+    margin-left: -280px !important;
+    opacity: 0 !important;
+  }
+  
   .left-side-menu {
-    left: -280px !important;
     position: fixed !important;
     top: 0;
     bottom: 0;
-    width: 280px;
-    z-index: 1051;
-    transition: left 0.3s ease-in-out;
-    background-color: var(--ct-bg-leftbar);
-    height: 100vh;
-    overflow-y: auto;
+    width: 240px !important;
+    z-index: 1055 !important;
+    transition: all 0.3s ease-in-out;
+    left: 0 !important;
   }
   
   /* Show sidebar when sidebar-enable class is on body */
   body.sidebar-enable .left-side-menu {
-    left: 0 !important;
+    margin-left: 0 !important;
+    opacity: 1 !important;
+  }
+  
+  /* Ensure button is clickable */
+  .button-menu-mobile {
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0.75rem 1rem;
+    color: inherit;
   }
   
   /* Ensure content doesn't shift on mobile */
@@ -30,6 +43,16 @@
   .navbar-custom {
     left: 0 !important;
     width: 100% !important;
+    margin-left: 0 !important;
+  }
+  
+  /* Fix for sidebar-enable state */
+  body.sidebar-enable .navbar-custom {
+    left: 0 !important;
+  }
+  
+  body.sidebar-enable .content-page {
+    margin-left: 0 !important;
   }
   
   /* Ensure wrapper doesn't have unnecessary padding */
@@ -42,6 +65,102 @@
 @media (min-width: 992px) {
   .left-side-menu {
     left: 0 !important;
+    width: 240px;
+    transition: width 0.3s ease-in-out, transform 0.3s ease-in-out;
+  }
+  
+  /* Condensed menu state */
+  body.left-side-menu-condensed .left-side-menu {
+    width: 60px !important;
+  }
+  
+  /* Adjust content page margin for condensed menu */
+  .content-page {
+    margin-left: 240px;
+    transition: margin-left 0.3s ease-in-out;
+  }
+  
+  body.left-side-menu-condensed .content-page {
+    margin-left: 60px !important;
+  }
+  
+  /* Adjust navbar for condensed menu */
+  .navbar-custom {
+    left: 240px !important;
+    transition: left 0.3s ease-in-out;
+  }
+  
+  body.left-side-menu-condensed .navbar-custom {
+    left: 60px !important;
+  }
+  
+  /* Logo switching for condensed mode */
+  .logo-box .logo-lg {
+    display: block;
+  }
+  
+  .logo-box .logo-sm {
+    display: none;
+  }
+  
+  body.left-side-menu-condensed .logo-box .logo-lg {
+    display: none !important;
+  }
+  
+  body.left-side-menu-condensed .logo-box .logo-sm {
+    display: block !important;
+  }
+  
+  /* Center logo in condensed mode */
+  body.left-side-menu-condensed .logo-box {
+    text-align: center;
+    padding: 0;
+  }
+  
+  body.left-side-menu-condensed .logo-box a {
+    display: block;
+  }
+  
+  /* Hide menu text in condensed mode */
+  body.left-side-menu-condensed #sidebar-menu ul li a span {
+    display: none !important;
+  }
+  
+  body.left-side-menu-condensed #sidebar-menu .menu-title {
+    display: none !important;
+  }
+  
+  /* Hide user box in condensed mode */
+  body.left-side-menu-condensed .user-box {
+    display: none !important;
+  }
+  
+  /* Center icons in condensed mode */
+  body.left-side-menu-condensed #sidebar-menu ul li a {
+    text-align: center;
+    padding: 15px 10px;
+    position: relative;
+  }
+  
+  body.left-side-menu-condensed #sidebar-menu ul li a i {
+    font-size: 18px;
+    margin: 0;
+  }
+  
+  /* Show tooltip on hover in condensed mode */
+  body.left-side-menu-condensed #sidebar-menu ul li a:hover::after {
+    content: attr(data-menu-title);
+    position: absolute;
+    left: 60px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #333;
+    color: #fff;
+    padding: 5px 10px;
+    border-radius: 3px;
+    white-space: nowrap;
+    z-index: 1000;
+    font-size: 12px;
   }
   
   /* Remove mobile-specific classes on desktop */
