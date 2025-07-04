@@ -1,6 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
-import LayoutFull from '@/components/layout/LayoutFull'
+import LayoutSimple from '@/components/layout/LayoutSimple'
 import ProtectedRoute from '@/components/auth/ProtectedRoute'
 import Login from '@/pages/Login'
 import Dashboard from '@/pages/Dashboard'
@@ -18,7 +18,7 @@ function App() {
       <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to="/" />} />
       
       <Route element={<ProtectedRoute />}>
-        <Route element={<LayoutFull />}>
+        <Route element={<LayoutSimple />}>
           <Route path="/" element={<Dashboard />} />
           <Route path="/containers" element={<Containers />} />
           <Route path="/containers/:id" element={<ContainerDetails />} />
