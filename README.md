@@ -10,7 +10,11 @@ A web-based platform for managing Docker environments with a React frontend and 
 - **Container Management**: Create, start, stop, restart, and remove containers
 - **Image Management**: List, pull, and remove Docker images
 - **System Information**: View Docker system info and statistics
-- **Real-time Updates**: WebSocket support for logs and events (partially implemented)
+- **Real-time Features**: 
+  - Live container logs streaming with tail selection
+  - Interactive container terminal (exec) with automatic shell detection
+  - Real-time container stats monitoring with charts
+  - WebSocket support for all real-time updates
 - **Audit Logging**: Track all user actions for security and compliance
 
 See [WorkLog.md](WorkLog.md) for detailed implementation progress and [PLAN.md](PLAN.md) for the project roadmap.
@@ -29,9 +33,11 @@ See [WorkLog.md](WorkLog.md) for detailed implementation progress and [PLAN.md](
 - React 18 with TypeScript
 - Vite for fast development
 - TanStack Query for server state
-- Tailwind CSS for styling
+- Bootstrap 5 for UI components
 - Zustand for client state
 - WebSocket support for real-time features
+- Recharts for data visualization
+- xterm.js for terminal emulation
 
 ## Quick Start
 

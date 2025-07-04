@@ -73,6 +73,39 @@ Error types:
 - `fatal: true` - Close connection, do not reconnect
 - `code` - Machine-readable error code for client handling
 
+### Real-time Features (WebSockets)
+
+Implemented WebSocket endpoints for real-time features:
+
+1. **Container Logs Streaming** (`/ws/containers/{id}/logs`)
+   - Stream container logs in real-time
+   - Support for tail selection (last N lines)
+   - Follow mode for continuous streaming
+   - Timestamps and stream type (stdout/stderr)
+
+2. **Container Exec Sessions** (`/ws/containers/{id}/exec`)
+   - Interactive terminal sessions via WebSocket
+   - Automatic shell detection (bash, sh, etc.)
+   - Terminal resize support
+   - Full TTY support with xterm.js frontend
+
+3. **Container Stats Monitoring** (`/ws/containers/{id}/stats`)
+   - Real-time CPU, memory, network, and block I/O statistics
+   - Streaming updates every second
+   - Formatted data ready for charting
+   - Support for both Docker API versions
+
+4. **Task Progress Updates** (`/ws/tasks/{id}`)
+   - Monitor background task progress
+   - Real-time status updates
+   - Error reporting
+
+5. **Docker Events** (`/ws/events`)
+   - Stream Docker daemon events
+   - Container lifecycle events
+   - Image events
+   - Network and volume events
+
 ### Global Error Handler
 
 ```python

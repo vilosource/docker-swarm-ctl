@@ -129,11 +129,45 @@
 
 #### Next Steps:
 
-1. Implement real-time container stats visualization
+1. ✅ Implement real-time container stats visualization - COMPLETED
 2. Add container exec functionality with xterm.js
 3. Create Docker events streaming
 4. Implement volume and network management features
 5. Design production-ready multi-instance architecture with Traefik
+
+## January 7, 2025
+
+### Container Exec Implementation
+
+#### Completed Tasks:
+
+1. **WebSocket Exec Endpoint**
+   - Created `/ws/containers/{id}/exec` endpoint with bidirectional communication
+   - Implemented authentication and permission checks (operator level required)
+   - Added support for custom commands and working directory
+   - Handled terminal resize commands via JSON messages
+   - Used binary WebSocket frames to preserve terminal control codes
+
+2. **ContainerTerminal Component**
+   - Integrated xterm.js for full terminal emulation
+   - Added custom dark theme matching the application design
+   - Implemented WebLinks addon for clickable URLs
+   - Added FitAddon for responsive terminal sizing
+   - Built reconnection functionality
+   - Created terminal toolbar with connection status
+
+3. **Integration**
+   - Added Terminal tab to ContainerDetails page
+   - Enabled interactive shell access to running containers
+   - Proper cleanup on component unmount
+
+### Current Development Focus
+
+With WebSocket real-time features completed (logs, stats, and exec), the next priorities are:
+
+1. **Docker Events Streaming** - Global event monitoring for all Docker activities
+2. **Volume Management** - CRUD operations for Docker volumes
+3. **Network Management** - CRUD operations for Docker networks
 
 ---
 

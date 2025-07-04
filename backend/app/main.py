@@ -112,8 +112,10 @@ async def app_exception_handler(request: Request, exc: AppException):
 # Include API router
 app.include_router(api_router, prefix=settings.api_v1_str)
 
-# Include WebSocket router
+# Include WebSocket routers
 app.include_router(ws_containers_router, prefix="/ws", tags=["websocket"])
+from app.api.v1.websocket import exec_router as ws_exec_router
+app.include_router(ws_exec_router, prefix="/ws", tags=["websocket"])
 
 
 @app.get("/")
