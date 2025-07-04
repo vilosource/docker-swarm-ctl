@@ -9,6 +9,9 @@ Docker Control Platform - A web-based platform for managing Docker environments 
 - **Phase 2**: Multi-server support with kubectl-like CLI tool
 - **Phase 3**: Docker Swarm orchestration features
 
+## Git Guidelines
+- Git commit message should never mention Claude 
+
 ## Tech Stack
 
 ### Backend

@@ -18,9 +18,6 @@ venv.bak/
 # Poetry
 .poetry/
 
-# CLI - not needed for server image
-dsctl_cli/
-
 # Tests
 tests/
 .pytest_cache/

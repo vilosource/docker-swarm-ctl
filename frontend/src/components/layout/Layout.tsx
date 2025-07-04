@@ -1,0 +1,295 @@
+import { useState, useEffect } from 'react'
+import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom'
+import { useAuthStore } from '@/store/authStore'
+
+const navigation = [
+  { 
+    name: 'Dashboard', 
+    href: '/', 
+    icon: 'mdi mdi-view-dashboard',
+    exact: true
+  },
+  { 
+    name: 'Containers', 
+    href: '/containers', 
+    icon: 'mdi mdi-docker'
+  },
+  { 
+    name: 'Images', 
+    href: '/images', 
+    icon: 'mdi mdi-layers'
+  },
+  { 
+    name: 'Users', 
+    href: '/users', 
+    icon: 'mdi mdi-account-multiple',
+    adminOnly: true 
+  },
+]
+
+export default function Layout() {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const { user, logout } = useAuthStore()
+  
+  const handleLogout = async () => {
+    await logout()
+    navigate('/login')
+  }
+  
+  const isAdmin = user?.role === 'admin'
+  
+  // Initialize theme and handle sidebar toggle
+  useEffect(() => {
+    // Function to show backdrop for mobile
+    const showBackdrop = () => {
+      const existingBackdrop = document.getElementById('custom-backdrop')
+      if (!existingBackdrop) {
+        const backdrop = document.createElement('div')
+        backdrop.id = 'custom-backdrop'
+        backdrop.className = 'offcanvas-backdrop fade show'
+        backdrop.style.zIndex = '1050'
+        document.body.appendChild(backdrop)
+        
+        // Click on backdrop to close menu
+        backdrop.addEventListener('click', () => {
+          document.body.classList.remove('sidebar-enable')
+          hideBackdrop()
+        })
+      }
+    }
+    
+    // Function to hide backdrop
+    const hideBackdrop = () => {
+      const backdrop = document.getElementById('custom-backdrop')
+      if (backdrop) {
+        backdrop.remove()
+      }
+    }
+    
+    // Add event delegation for button-menu-mobile since React re-renders
+    const handleMenuToggle = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (target.closest('.button-menu-mobile')) {
+        e.preventDefault()
+        
+        if (window.innerWidth < 992) {
+          // Mobile - toggle sidebar-enable and show/hide backdrop
+          const isSidebarOpen = document.body.classList.contains('sidebar-enable')
+          
+          if (isSidebarOpen) {
+            document.body.classList.remove('sidebar-enable')
+            hideBackdrop()
+          } else {
+            document.body.classList.add('sidebar-enable')
+            showBackdrop()
+          }
+        } else {
+          // Desktop - toggle left-side-menu-condensed
+          document.body.classList.toggle('left-side-menu-condensed')
+        }
+      }
+    }
+    
+    // Handle window resize
+    const handleResize = () => {
+      if (window.innerWidth >= 992) {
+        // Remove mobile-specific classes on desktop
+        document.body.classList.remove('sidebar-enable')
+        hideBackdrop()
+      }
+    }
+    
+    document.addEventListener('click', handleMenuToggle)
+    window.addEventListener('resize', handleResize)
+    
+    // Initialize theme if app.js is loaded
+    if (window.$ && window.App) {
+      window.App.init()
+    }
+    
+    return () => {
+      document.removeEventListener('click', handleMenuToggle)
+      window.removeEventListener('resize', handleResize)
+      hideBackdrop() // Clean up backdrop on unmount
+    }
+  }, [])
+  
+  return (
+    <div id="wrapper">
+      {/* Topbar Start */}
+      <div className="navbar-custom">
+        <div className="container-fluid">
+          <ul className="list-unstyled topnav-menu float-end mb-0">
+            {/* Dark/Light Mode Toggle */}
+            <li className="d-none d-md-inline-block">
+              <a 
+                className="nav-link dropdown-toggle arrow-none waves-effect waves-light" 
+                id="light-dark-mode" 
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault()
+                  document.body.classList.toggle('dark')
+                }}
+              >
+                <i className="fe-moon noti-icon"></i>
+              </a>
+            </li>
+            
+            {/* Fullscreen Toggle */}
+            <li className="dropdown d-none d-lg-inline-block">
+              <a 
+                className="nav-link dropdown-toggle arrow-none waves-effect waves-light" 
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault()
+                  if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen()
+                  } else {
+                    document.exitFullscreen()
+                  }
+                }}
+              >
+                <i className="fe-maximize noti-icon"></i>
+              </a>
+            </li>
+            
+            {/* User Dropdown */}
+            <li className="dropdown notification-list topbar-dropdown">
+              <a className="nav-link dropdown-toggle nav-user me-0" data-bs-toggle="dropdown" href="#" role="button" aria-haspopup="false" aria-expanded="false">
+                <img src="/assets/images/users/avatar-1.jpg" alt="user-image" className="rounded-circle" height="32" />
+                <span className="pro-user-name ms-1">
+                  {user?.username} <i className="mdi mdi-chevron-down"></i>
+                </span>
+              </a>
+              <div className="dropdown-menu dropdown-menu-end profile-dropdown">
+                {/* User Details */}
+                <div className="dropdown-header noti-title">
+                  <h6 className="text-overflow m-0">Welcome!</h6>
+                </div>
+                
+                <Link to="/profile" className="dropdown-item notify-item">
+                  <i className="fe-user"></i>
+                  <span>My Account</span>
+                </Link>
+                
+                <div className="dropdown-divider"></div>
+                
+                <a href="#" className="dropdown-item notify-item" onClick={handleLogout}>
+                  <i className="fe-log-out"></i>
+                  <span>Logout</span>
+                </a>
+              </div>
+            </li>
+          </ul>
+          
+          {/* LOGO */}
+          <div className="logo-box">
+            <a href="/" className="logo logo-light text-center">
+              <span className="logo-sm">
+                <img src="/assets/images/logo-sm.png" alt="" height="22" />
+              </span>
+              <span className="logo-lg">
+                <img src="/assets/images/logo-light.png" alt="" height="16" />
+              </span>
+            </a>
+            <a href="/" className="logo logo-dark text-center">
+              <span className="logo-sm">
+                <img src="/assets/images/logo-sm.png" alt="" height="22" />
+              </span>
+              <span className="logo-lg">
+                <img src="/assets/images/logo-dark.png" alt="" height="16" />
+              </span>
+            </a>
+          </div>
+          
+          <ul className="list-unstyled topnav-menu topnav-menu-left mb-0">
+            <li>
+              <button 
+                className="button-menu-mobile waves-effect waves-light"
+                type="button"
+              >
+                <i className="fe-menu"></i>
+              </button>
+            </li>
+          </ul>
+          
+          <div className="clearfix"></div>
+        </div>
+      </div>
+      {/* end Topbar */}
+      
+      {/* ========== Left Sidebar Start ========== */}
+      <div className="left-side-menu">
+        <div className="h-100" data-simplebar>
+          {/* User box */}
+          <div className="user-box text-center">
+            <div className="dropdown">
+              <a href="#" className="user-name dropdown-toggle h5 mt-2 mb-1 d-block">
+                {user?.username}
+              </a>
+            </div>
+            <p className="text-muted left-user-info">{user?.role}</p>
+          </div>
+          
+          {/* Sidebar */}
+          <div id="sidebar-menu">
+            <ul id="side-menu">
+              <li className="menu-title">Navigation</li>
+              
+              {navigation.map((item) => {
+                if (item.adminOnly && !isAdmin) return null
+                
+                const isActive = item.exact 
+                  ? location.pathname === item.href
+                  : location.pathname.startsWith(item.href)
+                
+                return (
+                  <li key={item.name} className={isActive ? 'menuitem-active' : ''}>
+                    <Link to={item.href} className={isActive ? 'active' : ''}>
+                      <i className={item.icon}></i>
+                      <span> {item.name} </span>
+                    </Link>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+          {/* End Sidebar */}
+          
+          <div className="clearfix"></div>
+        </div>
+      </div>
+      {/* Left Sidebar End */}
+      
+      {/* ============================================================== */}
+      {/* Start Page Content here */}
+      {/* ============================================================== */}
+      
+      <div className="content-page">
+        <div className="content">
+          {/* Start Content*/}
+          <div className="container-fluid">
+            <Outlet />
+          </div>
+        </div>
+        
+        {/* Footer Start */}
+        <footer className="footer">
+          <div className="container-fluid">
+            <div className="row">
+              <div className="col-md-6">
+                {new Date().getFullYear()} &copy; Docker Control Platform
+              </div>
+            </div>
+          </div>
+        </footer>
+        {/* end Footer */}
+      </div>
+      
+      {/* ============================================================== */}
+      {/* End Page content */}
+      {/* ============================================================== */}
+    </div>
+  )
+}

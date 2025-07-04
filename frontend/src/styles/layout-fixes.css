@@ -1,0 +1,71 @@
+/* Mobile Sidebar Fixes */
+
+/* Hide sidebar by default on mobile */
+@media (max-width: 991.98px) {
+  .left-side-menu {
+    left: -280px !important;
+    position: fixed !important;
+    top: 0;
+    bottom: 0;
+    width: 280px;
+    z-index: 1051;
+    transition: left 0.3s ease-in-out;
+    background-color: var(--ct-bg-leftbar);
+    height: 100vh;
+    overflow-y: auto;
+  }
+  
+  /* Show sidebar when sidebar-enable class is on body */
+  body.sidebar-enable .left-side-menu {
+    left: 0 !important;
+  }
+  
+  /* Ensure content doesn't shift on mobile */
+  .content-page {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+  
+  /* Ensure topbar stays in place */
+  .navbar-custom {
+    left: 0 !important;
+    width: 100% !important;
+  }
+  
+  /* Ensure wrapper doesn't have unnecessary padding */
+  #wrapper {
+    overflow: visible !important;
+  }
+}
+
+/* Desktop behavior - ensure sidebar is visible */
+@media (min-width: 992px) {
+  .left-side-menu {
+    left: 0 !important;
+  }
+  
+  /* Remove mobile-specific classes on desktop */
+  body.sidebar-enable .offcanvas-backdrop {
+    display: none;
+  }
+}
+
+/* Backdrop styling for mobile */
+.offcanvas-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1050;
+  width: 100vw;
+  height: 100vh;
+  background-color: #000;
+}
+
+.offcanvas-backdrop.fade {
+  opacity: 0;
+  transition: opacity .15s linear;
+}
+
+.offcanvas-backdrop.show {
+  opacity: .5;
+}
