@@ -8,11 +8,18 @@ from app.models.user import UserRole
 
 
 class UserBase(BaseModel):
-    email: EmailStr
+    email: str = Field(..., min_length=5, max_length=255)
     username: str = Field(..., min_length=3, max_length=50)
     full_name: str = Field(..., min_length=1, max_length=100)
     role: UserRole = UserRole.viewer
     is_active: bool = True
+    
+    @validator("email")
+    def validate_email(cls, v):
+        # Basic email validation that allows .local domains for development
+        if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', v):
+            raise ValueError("Invalid email format")
+        return v
     
     @validator("username")
     def validate_username(cls, v):
@@ -34,7 +41,7 @@ class UserCreate(UserBase):
 
 
 class UserUpdate(BaseModel):
-    email: Optional[EmailStr] = None
+    email: Optional[str] = Field(None, min_length=5, max_length=255)
     username: Optional[str] = Field(None, min_length=3, max_length=50)
     full_name: Optional[str] = Field(None, min_length=1, max_length=100)
     role: Optional[UserRole] = None
@@ -52,7 +59,7 @@ class UserResponse(UserBase):
 
 
 class UserLogin(BaseModel):
-    email: EmailStr
+    email: str = Field(..., min_length=5, max_length=255)
     password: str
 
 
