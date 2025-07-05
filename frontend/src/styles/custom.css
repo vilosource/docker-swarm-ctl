@@ -250,3 +250,57 @@ html[data-sidebar-size=condensed] .left-side-menu #sidebar-menu > ul > li:hover 
 .footer {
   transition: all 0.3s ease;
 }
+
+/* Responsive Table Enhancements */
+.responsive-table-plugin .table {
+  font-size: 13px;
+}
+
+.responsive-table-plugin .table th {
+  font-weight: 600;
+  color: #6c757d;
+  border-bottom: 2px solid #e3e3e3;
+}
+
+.responsive-table-plugin .table td {
+  vertical-align: middle;
+  padding: 12px 8px;
+}
+
+.responsive-table-plugin .table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+.responsive-table-plugin .table tbody tr.focused {
+  background-color: #e7f3ff;
+}
+
+/* Container name styling */
+.responsive-table-plugin .table h5 {
+  margin-bottom: 0.25rem;
+  font-size: 14px;
+}
+
+.responsive-table-plugin .font-12 {
+  font-size: 12px;
+}
+
+/* Action buttons compact spacing */
+.responsive-table-plugin .btn-group-sm > .btn {
+  padding: 0.25rem 0.5rem;
+}
+
+/* Port badges */
+.responsive-table-plugin .badge {
+  font-size: 11px;
+  padding: 0.25em 0.6em;
+}
+
+/* Container ID styling */
+.responsive-table-plugin code {
+  background-color: #f4f4f4;
+  padding: 2px 6px;
+  border-radius: 3px;
+  color: #666;
+  font-family: 'Monaco', 'Consolas', 'Courier New', monospace;
+}
