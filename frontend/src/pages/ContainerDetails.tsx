@@ -79,64 +79,56 @@ export default function ContainerDetails() {
 
       {/* Container Overview */}
       <div className="row">
-        <div className="col-lg-8">
+        <div className="col-12">
           <div className="card">
-            <div className="card-body">
-              <h5 className="card-title">Container Information</h5>
-              <div className="row">
-                <div className="col-md-6">
-                  <p className="text-muted mb-1">ID</p>
-                  <p className="font-monospace">{container.id.substring(0, 12)}</p>
-                </div>
-                <div className="col-md-6">
-                  <p className="text-muted mb-1">Status</p>
-                  <p>{getStatusBadge(container.status)}</p>
-                </div>
-                <div className="col-md-6">
-                  <p className="text-muted mb-1">Image</p>
-                  <p>{container.image}</p>
-                </div>
-                <div className="col-md-6">
-                  <p className="text-muted mb-1">Created</p>
-                  <p>{new Date(container.created).toLocaleString()}</p>
-                </div>
+            <div className="card-body p-3">
+              <div className="table-responsive">
+                <table className="table table-sm mb-0">
+                  <thead>
+                    <tr>
+                      <th className="text-muted">ID</th>
+                      <th className="text-muted">Status</th>
+                      <th className="text-muted">Image</th>
+                      <th className="text-muted">Created</th>
+                      <th className="text-muted">Ports</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td className="font-monospace">{container.id.substring(0, 12)}</td>
+                      <td>{getStatusBadge(container.status)}</td>
+                      <td>{container.image}</td>
+                      <td>{new Date(container.created).toLocaleString()}</td>
+                      <td>
+                        {container.ports && Object.keys(container.ports).length > 0 ? (
+                          <div className="d-flex flex-wrap">
+                            {Object.entries(container.ports).map(([containerPort, hostPorts]) => {
+                              if (!hostPorts || hostPorts.length === 0) return null
+                              return hostPorts.map((hostPort: any, index: number) => (
+                                <span key={`${containerPort}-${index}`} className="badge bg-soft-info text-info me-1">
+                                  {hostPort.HostPort}→{containerPort}
+                                </span>
+                              ))
+                            })}
+                          </div>
+                        ) : (
+                          <small className="text-muted">No mappings</small>
+                        )}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="col-lg-4">
-          <div className="card">
-            <div className="card-body">
-              <h5 className="card-title">Ports</h5>
-              {container.ports && Object.keys(container.ports).length > 0 ? (
-                <div>
-                  {Object.entries(container.ports).map(([containerPort, hostPorts]) => {
-                    if (!hostPorts || hostPorts.length === 0) return null
-                    return (
-                      <div key={containerPort} className="mb-2">
-                        {hostPorts.map((hostPort: any, index: number) => (
-                          <span key={index} className="badge bg-soft-info text-info me-1">
-                            {hostPort.HostPort}→{containerPort}
-                          </span>
-                        ))}
-                      </div>
-                    )
-                  })}
-                </div>
-              ) : (
-                <p className="text-muted mb-0">No port mappings</p>
-              )}
             </div>
           </div>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="row mt-4">
+      <div className="row mt-3">
         <div className="col-12">
           <div className="card">
-            <div className="card-header">
+            <div className="card-header py-2">
               <ul className="nav nav-tabs card-header-tabs">
                 <li className="nav-item">
                   <a 
@@ -167,7 +159,7 @@ export default function ContainerDetails() {
                 </li>
               </ul>
             </div>
-            <div className="card-body p-0" style={{ height: 'calc(100vh - 400px)', minHeight: '400px' }}>
+            <div className="card-body p-0" style={{ height: 'calc(100vh - 320px)', minHeight: '400px' }}>
               {activeTab === 'logs' && <ContainerLogs containerId={container.id} />}
               {activeTab === 'terminal' && (
                 <div className="h-100">
