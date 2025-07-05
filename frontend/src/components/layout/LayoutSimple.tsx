@@ -1,6 +1,7 @@
 import React from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
+import { useSidebarToggle } from '@/hooks/useSidebarToggle'
 
 const navigation = [
   { 
@@ -36,6 +37,7 @@ const LayoutSimple: React.FC = () => {
   const navigate = useNavigate()
   const location = useLocation()
   const { user, logout } = useAuthStore()
+  const { toggleSidebar, isCondensed } = useSidebarToggle()
   
   const handleLogout = async () => {
     await logout()
@@ -90,7 +92,10 @@ const LayoutSimple: React.FC = () => {
 
             <ul className="list-unstyled topnav-menu topnav-menu-left m-0">
               <li>
-                <button className="button-menu-mobile waves-effect waves-light">
+                <button 
+                  className="button-menu-mobile waves-effect waves-light"
+                  onClick={toggleSidebar}
+                >
                   <i className="fe-menu"></i>
                 </button>
               </li>
@@ -139,7 +144,11 @@ const LayoutSimple: React.FC = () => {
                   
                   return (
                     <li key={item.name} className={isActive ? 'menuitem-active' : ''}>
-                      <Link to={item.href} className={isActive ? 'active' : ''}>
+                      <Link 
+                        to={item.href} 
+                        className={isActive ? 'active' : ''}
+                        title={isCondensed ? item.name : ''}
+                      >
                         <i className={item.icon}></i>
                         <span> {item.name} </span>
                       </Link>

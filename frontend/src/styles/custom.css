@@ -75,3 +75,87 @@
 .left-side-menu [data-simplebar] {
   height: calc(100% - 64px);
 }
+
+/* Condensed sidebar styles */
+html[data-sidebar-size=condensed] .left-side-menu {
+  width: 70px;
+}
+
+html[data-sidebar-size=condensed] .content-page {
+  margin-left: 70px;
+}
+
+html[data-sidebar-size=condensed] .logo span.logo-lg {
+  display: none;
+}
+
+html[data-sidebar-size=condensed] .logo span.logo-sm {
+  display: inline-block;
+}
+
+html[data-sidebar-size=condensed] .left-side-menu #sidebar-menu .menu-title,
+html[data-sidebar-size=condensed] .left-side-menu #sidebar-menu span {
+  display: none;
+}
+
+html[data-sidebar-size=condensed] .left-side-menu #sidebar-menu > ul > li > a {
+  padding: 15px 20px;
+  text-align: center;
+}
+
+html[data-sidebar-size=condensed] .left-side-menu #sidebar-menu > ul > li > a i {
+  font-size: 18px;
+  margin: 0;
+}
+
+html[data-sidebar-size=condensed] .user-box {
+  display: none;
+}
+
+/* Mobile sidebar styles */
+@media (max-width: 767.98px) {
+  .left-side-menu {
+    position: fixed;
+    left: -240px;
+    transition: left 0.3s ease;
+    z-index: 1001;
+  }
+  
+  .sidebar-enable .left-side-menu {
+    left: 0;
+  }
+  
+  .content-page {
+    margin-left: 0 !important;
+  }
+  
+  .navbar-custom {
+    margin-left: 0;
+  }
+}
+
+/* Backdrop for mobile */
+.offcanvas-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.offcanvas-backdrop.fade {
+  opacity: 0;
+  transition: opacity 0.15s linear;
+}
+
+.offcanvas-backdrop.show {
+  opacity: 1;
+}
+
+/* Transitions */
+.left-side-menu,
+.content-page {
+  transition: all 0.3s ease;
+}
