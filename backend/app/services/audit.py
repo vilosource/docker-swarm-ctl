@@ -47,6 +47,7 @@ class AuditService:
         action: str,
         resource_type: Optional[str] = None,
         resource_id: Optional[str] = None,
+        host_id: Optional[UUID] = None,
         details: Optional[Dict[str, Any]] = None,
         request: Optional[Request] = None
     ) -> AuditLog:
@@ -55,6 +56,7 @@ class AuditService:
             action=action,
             resource_type=resource_type,
             resource_id=resource_id,
+            host_id=host_id,
             details=details,
             ip_address=request.client.host if request else None,
             user_agent=request.headers.get("user-agent") if request else None

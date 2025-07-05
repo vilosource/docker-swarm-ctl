@@ -16,8 +16,8 @@ class UserBase(BaseModel):
     
     @validator("email")
     def validate_email(cls, v):
-        # Basic email validation that allows .local domains for development
-        if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', v):
+        # Basic email validation that allows localhost domains for development
+        if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+(\.[a-zA-Z]{2,})?$', v):
             raise ValueError("Invalid email format")
         return v
     

@@ -1,84 +1,113 @@
 from typing import List, Optional, Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 import asyncio
+import json
 
 from app.db.session import get_db
 from app.core.security import get_current_active_user, require_role
+from app.core.config import settings
 from app.schemas.container import ContainerCreate, ContainerResponse, ContainerStats, ContainerInspect
-from app.services.docker_client import get_docker_client, handle_docker_errors
+from app.services.docker_service import (
+    IDockerService, DockerServiceFactory, ContainerData
+)
 from app.services.audit import AuditService
 from app.models.user import User
+from app.core.exceptions import DockerOperationError, AuthorizationError
 
 
 router = APIRouter()
 
 
-def format_container(container) -> ContainerResponse:
+def format_container(container_data: ContainerData) -> ContainerResponse:
+    """Format container data for response"""
     return ContainerResponse(
-        id=container.id[:12],
-        name=container.name,
-        image=container.image.tags[0] if container.image.tags else container.image.id,
-        status=container.status,
-        state=container.attrs["State"]["Status"],
-        created=container.attrs["Created"],
-        ports=container.attrs["NetworkSettings"]["Ports"] or {},
-        labels=container.labels or {}
+        id=container_data.id,
+        name=container_data.name,
+        image=container_data.image,
+        status=container_data.status,
+        state=container_data.state,
+        created=container_data.created,
+        ports=container_data.ports,
+        labels=container_data.labels,
+        host_id=container_data.host_id
     )
+
+
+async def get_docker_service_dep(
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+) -> IDockerService:
+    """Dependency to get Docker service instance"""
+    # Check if multi-host is enabled via settings or feature flag
+    multi_host_enabled = getattr(settings, 'multi_host_enabled', True)
+    return DockerServiceFactory.create(current_user, db, multi_host_enabled)
 
 
 @router.get("/", response_model=List[ContainerResponse])
 async def list_containers(
     all: bool = Query(False, description="Show all containers (default shows just running)"),
     filters: Optional[str] = Query(None, description="JSON encoded filters"),
-    current_user: User = Depends(get_current_active_user)
+    host_id: Optional[str] = Query(None, description="Docker host ID (for multi-host deployments)"),
+    docker_service: IDockerService = Depends(get_docker_service_dep)
 ):
-    client = get_docker_client()
-    
-    kwargs = {"all": all}
+    """List containers from specified or default Docker host"""
+    filter_dict = None
     if filters:
-        import json
         try:
-            kwargs["filters"] = json.loads(filters)
+            filter_dict = json.loads(filters)
         except json.JSONDecodeError:
             raise HTTPException(status_code=400, detail="Invalid filters format")
     
-    containers = client.containers.list(**kwargs)
-    return [format_container(c) for c in containers]
+    try:
+        containers = await docker_service.list_containers(
+            all=all,
+            filters=filter_dict,
+            host_id=host_id
+        )
+        return [format_container(c) for c in containers]
+    except AuthorizationError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except DockerOperationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.post("/", response_model=ContainerResponse)
 async def create_container(
     request: Request,
     config: ContainerCreate,
+    host_id: Optional[str] = Query(None, description="Docker host ID (for multi-host deployments)"),
     current_user: User = Depends(require_role("operator")),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    docker_service: IDockerService = Depends(get_docker_service_dep)
 ):
-    client = get_docker_client()
-    
+    """Create a new container on specified or default Docker host"""
     # Build container configuration
-    kwargs = {
+    container_config = {
         "image": config.image,
         "detach": True
     }
     
     if config.name:
-        kwargs["name"] = config.name
+        container_config["name"] = config.name
     if config.command:
-        kwargs["command"] = config.command
+        container_config["command"] = config.command
     if config.environment:
-        kwargs["environment"] = config.environment
+        container_config["environment"] = config.environment
     if config.ports:
-        kwargs["ports"] = config.ports
+        container_config["ports"] = config.ports
     if config.volumes:
-        kwargs["volumes"] = config.volumes
+        container_config["volumes"] = config.volumes
     if config.labels:
-        kwargs["labels"] = config.labels
+        container_config["labels"] = config.labels
     if config.restart_policy:
-        kwargs["restart_policy"] = {"Name": config.restart_policy}
+        container_config["restart_policy"] = {"Name": config.restart_policy}
     
     try:
-        container = client.containers.run(**kwargs)
+        container_data = await docker_service.create_container(
+            config=container_config,
+            host_id=host_id
+        )
         
         # Log the action
         audit_service = AuditService(db)
@@ -86,7 +115,8 @@ async def create_container(
             user=current_user,
             action="container.create",
             resource_type="container",
-            resource_id=container.id[:12],
+            resource_id=container_data.id,
+            host_id=container_data.host_id,
             details={
                 "image": config.image,
                 "name": config.name,
@@ -95,42 +125,51 @@ async def create_container(
             request=request
         )
         
-        return format_container(container)
-    except Exception as e:
+        return format_container(container_data)
+    except AuthorizationError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except DockerOperationError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/{container_id}", response_model=ContainerResponse)
 async def get_container(
     container_id: str,
-    current_user: User = Depends(get_current_active_user)
+    host_id: Optional[str] = Query(None, description="Docker host ID (for multi-host deployments)"),
+    docker_service: IDockerService = Depends(get_docker_service_dep)
 ):
-    client = get_docker_client()
-    
+    """Get container details"""
     try:
-        container = client.containers.get(container_id)
-        return format_container(container)
-    except Exception as e:
-        raise HTTPException(status_code=404, detail=f"Container {container_id} not found")
+        container_data = await docker_service.get_container(
+            container_id=container_id,
+            host_id=host_id
+        )
+        return format_container(container_data)
+    except AuthorizationError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except DockerOperationError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @router.get("/{container_id}/inspect", response_model=ContainerInspect)
 async def inspect_container(
     container_id: str,
-    current_user: User = Depends(get_current_active_user)
+    host_id: Optional[str] = Query(None, description="Docker host ID (for multi-host deployments)"),
+    docker_service: IDockerService = Depends(get_docker_service_dep)
 ):
-    client = get_docker_client()
-    
+    """Get detailed container inspection data"""
     try:
-        container = client.containers.get(container_id)
-        attrs = container.attrs
+        attrs = await docker_service.inspect_container(
+            container_id=container_id,
+            host_id=host_id
+        )
         
         # Extract environment variables from Config
         env_list = attrs.get("Config", {}).get("Env", [])
         
         return ContainerInspect(
-            id=container.id,
-            name=container.name,
+            id=attrs.get("Id", ""),
+            name=attrs.get("Name", "").lstrip("/"),
             image=attrs.get("Config", {}).get("Image", ""),
             config=attrs.get("Config", {}),
             environment=env_list,
@@ -139,22 +178,27 @@ async def inspect_container(
             state=attrs.get("State", {}),
             host_config=attrs.get("HostConfig", {})
         )
-    except Exception as e:
-        raise HTTPException(status_code=404, detail=f"Container {container_id} not found")
+    except AuthorizationError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except DockerOperationError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @router.post("/{container_id}/start")
 async def start_container(
     request: Request,
     container_id: str,
+    host_id: Optional[str] = Query(None, description="Docker host ID (for multi-host deployments)"),
     current_user: User = Depends(require_role("operator")),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    docker_service: IDockerService = Depends(get_docker_service_dep)
 ):
-    client = get_docker_client()
-    
+    """Start a stopped container"""
     try:
-        container = client.containers.get(container_id)
-        container.start()
+        await docker_service.start_container(
+            container_id=container_id,
+            host_id=host_id
+        )
         
         # Log the action
         audit_service = AuditService(db)
@@ -163,11 +207,14 @@ async def start_container(
             action="container.start",
             resource_type="container",
             resource_id=container_id,
+            host_id=host_id,
             request=request
         )
         
         return {"message": f"Container {container_id} started"}
-    except Exception as e:
+    except AuthorizationError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except DockerOperationError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
@@ -176,14 +223,18 @@ async def stop_container(
     request: Request,
     container_id: str,
     timeout: int = Query(10, description="Timeout in seconds"),
+    host_id: Optional[str] = Query(None, description="Docker host ID (for multi-host deployments)"),
     current_user: User = Depends(require_role("operator")),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    docker_service: IDockerService = Depends(get_docker_service_dep)
 ):
-    client = get_docker_client()
-    
+    """Stop a running container"""
     try:
-        container = client.containers.get(container_id)
-        container.stop(timeout=timeout)
+        await docker_service.stop_container(
+            container_id=container_id,
+            timeout=timeout,
+            host_id=host_id
+        )
         
         # Log the action
         audit_service = AuditService(db)
@@ -192,11 +243,14 @@ async def stop_container(
             action="container.stop",
             resource_type="container",
             resource_id=container_id,
+            host_id=host_id,
             request=request
         )
         
         return {"message": f"Container {container_id} stopped"}
-    except Exception as e:
+    except AuthorizationError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except DockerOperationError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
@@ -205,14 +259,18 @@ async def restart_container(
     request: Request,
     container_id: str,
     timeout: int = Query(10, description="Timeout in seconds"),
+    host_id: Optional[str] = Query(None, description="Docker host ID (for multi-host deployments)"),
     current_user: User = Depends(require_role("operator")),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    docker_service: IDockerService = Depends(get_docker_service_dep)
 ):
-    client = get_docker_client()
-    
+    """Restart a container"""
     try:
-        container = client.containers.get(container_id)
-        container.restart(timeout=timeout)
+        await docker_service.restart_container(
+            container_id=container_id,
+            timeout=timeout,
+            host_id=host_id
+        )
         
         # Log the action
         audit_service = AuditService(db)
@@ -221,11 +279,14 @@ async def restart_container(
             action="container.restart",
             resource_type="container",
             resource_id=container_id,
+            host_id=host_id,
             request=request
         )
         
         return {"message": f"Container {container_id} restarted"}
-    except Exception as e:
+    except AuthorizationError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except DockerOperationError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
@@ -235,14 +296,19 @@ async def remove_container(
     container_id: str,
     force: bool = Query(False, description="Force removal"),
     volumes: bool = Query(False, description="Remove associated volumes"),
+    host_id: Optional[str] = Query(None, description="Docker host ID (for multi-host deployments)"),
     current_user: User = Depends(require_role("operator")),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    docker_service: IDockerService = Depends(get_docker_service_dep)
 ):
-    client = get_docker_client()
-    
+    """Remove a container"""
     try:
-        container = client.containers.get(container_id)
-        container.remove(force=force, v=volumes)
+        await docker_service.remove_container(
+            container_id=container_id,
+            force=force,
+            volumes=volumes,
+            host_id=host_id
+        )
         
         # Log the action
         audit_service = AuditService(db)
@@ -251,12 +317,15 @@ async def remove_container(
             action="container.delete",
             resource_type="container",
             resource_id=container_id,
+            host_id=host_id,
             details={"force": force, "volumes": volumes},
             request=request
         )
         
         return {"message": f"Container {container_id} removed"}
-    except Exception as e:
+    except AuthorizationError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except DockerOperationError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
@@ -265,36 +334,41 @@ async def get_container_logs(
     container_id: str,
     lines: int = Query(100, description="Number of lines to return"),
     timestamps: bool = Query(False, description="Add timestamps to logs"),
-    current_user: User = Depends(get_current_active_user)
+    host_id: Optional[str] = Query(None, description="Docker host ID (for multi-host deployments)"),
+    docker_service: IDockerService = Depends(get_docker_service_dep)
 ):
-    client = get_docker_client()
-    
+    """Get container logs"""
     try:
-        container = client.containers.get(container_id)
-        logs = container.logs(
-            tail=lines,
+        logs = await docker_service.get_container_logs(
+            container_id=container_id,
+            lines=lines,
             timestamps=timestamps,
-            stream=False
+            host_id=host_id
         )
         
         return {
             "container_id": container_id,
-            "logs": logs.decode("utf-8")
+            "logs": logs,
+            "host_id": host_id
         }
-    except Exception as e:
+    except AuthorizationError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except DockerOperationError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
 
 @router.get("/{container_id}/stats", response_model=ContainerStats)
 async def get_container_stats(
     container_id: str,
-    current_user: User = Depends(get_current_active_user)
+    host_id: Optional[str] = Query(None, description="Docker host ID (for multi-host deployments)"),
+    docker_service: IDockerService = Depends(get_docker_service_dep)
 ):
-    client = get_docker_client()
-    
+    """Get real-time container resource usage statistics"""
     try:
-        container = client.containers.get(container_id)
-        stats = container.stats(stream=False)
+        stats = await docker_service.get_container_stats(
+            container_id=container_id,
+            host_id=host_id
+        )
         
         # Calculate CPU percentage
         cpu_delta = stats["cpu_stats"]["cpu_usage"]["total_usage"] - \
@@ -329,5 +403,7 @@ async def get_container_stats(
             block_write=block_write,
             pids=stats["pids_stats"]["current"] if "pids_stats" in stats else 0
         )
-    except Exception as e:
+    except AuthorizationError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except DockerOperationError as e:
         raise HTTPException(status_code=404, detail=str(e))

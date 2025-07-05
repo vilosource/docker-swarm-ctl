@@ -78,6 +78,7 @@ class ContainerResponse(BaseModel):
     created: datetime
     ports: Dict[str, Any]
     labels: Dict[str, str]
+    host_id: Optional[str] = Field(None, description="Docker host ID (for multi-host deployments)")
     
     class Config:
         from_attributes = True

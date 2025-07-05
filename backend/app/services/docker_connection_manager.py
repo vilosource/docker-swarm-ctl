@@ -136,10 +136,13 @@ class DockerConnectionManager:
         credentials = await self._get_credentials(host_id, db)
         
         try:
-            if host.connection_type == "unix":
+            # Convert enum to string if needed
+            connection_type = host.connection_type.value if hasattr(host.connection_type, 'value') else host.connection_type
+            
+            if connection_type == "unix":
                 client = docker.DockerClient(base_url=host.host_url)
             
-            elif host.connection_type == "tcp":
+            elif connection_type == "tcp":
                 # Build TLS configuration if credentials exist
                 tls_config = None
                 if "tls_cert" in credentials and "tls_key" in credentials:
@@ -157,7 +160,7 @@ class DockerConnectionManager:
                     tls=tls_config
                 )
             
-            elif host.connection_type == "ssh":
+            elif connection_type == "ssh":
                 # SSH connection support (requires paramiko)
                 # For now, we'll use the standard Docker client
                 # In production, use docker-py's SSH support
@@ -165,7 +168,7 @@ class DockerConnectionManager:
             
             else:
                 raise DockerConnectionError(
-                    f"Unsupported connection type: {host.connection_type}"
+                    f"Unsupported connection type: {connection_type}"
                 )
             
             # Test connection
