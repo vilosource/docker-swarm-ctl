@@ -147,7 +147,6 @@ const LayoutSimple: React.FC = () => {
                       <Link 
                         to={item.href} 
                         className={isActive ? 'active' : ''}
-                        title={isCondensed ? item.name : ''}
                       >
                         <i className={item.icon}></i>
                         <span> {item.name} </span>

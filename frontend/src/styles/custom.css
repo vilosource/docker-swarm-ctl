@@ -157,38 +157,36 @@ html[data-sidebar-size=condensed] .left-side-menu #sidebar-menu span {
 
 html[data-sidebar-size=condensed] .left-side-menu #sidebar-menu > ul > li > a {
   padding: 15px 20px;
-  text-align: center;
+  text-align: left;
   position: relative;
+  transition: all 0.2s ease;
+  min-height: 54px;
 }
 
 html[data-sidebar-size=condensed] .left-side-menu #sidebar-menu > ul > li > a i {
   font-size: 18px;
-  margin: 0;
+  margin-right: 20px;
+  vertical-align: middle;
 }
 
 html[data-sidebar-size=condensed] .user-box {
   display: none;
 }
 
-/* Tooltip on hover for condensed menu */
-html[data-sidebar-size=condensed] .left-side-menu #sidebar-menu > ul > li > a:hover::after {
-  content: attr(title);
-  position: absolute;
-  left: 100%;
-  top: 50%;
-  transform: translateY(-50%);
-  margin-left: 10px;
-  background: #fff;
-  color: #6c757d;
-  padding: 8px 16px;
-  border-radius: 4px;
-  white-space: nowrap;
-  z-index: 1000;
-  font-size: 14px;
-  font-weight: 500;
-  pointer-events: none;
+/* Hover behavior for condensed menu - expand to show text */
+html[data-sidebar-size=condensed] .left-side-menu #sidebar-menu > ul > li:hover > a {
+  position: relative;
+  width: calc(190px + 70px);
+  background-color: #fff;
   box-shadow: 0 0 24px 0 rgba(0, 0, 0, 0.1);
   border: 1px solid #e3e3e3;
+  border-left: none;
+  z-index: 1001;
+}
+
+html[data-sidebar-size=condensed] .left-side-menu #sidebar-menu > ul > li:hover > a span {
+  display: inline !important;
+  padding-left: 5px;
 }
 
 /* Mobile sidebar styles */
