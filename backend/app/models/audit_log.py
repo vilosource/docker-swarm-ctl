@@ -15,6 +15,7 @@ class AuditLog(Base):
     action = Column(String(100), nullable=False, index=True)
     resource_type = Column(String(50), index=True)
     resource_id = Column(String(255), index=True)
+    host_id = Column(UUID(as_uuid=True), ForeignKey("docker_hosts.id"), nullable=True)
     details = Column(JSON)
     ip_address = Column(INET)
     user_agent = Column(String)
