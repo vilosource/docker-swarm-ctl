@@ -48,6 +48,7 @@ export default function ContainerList({
             <th>Name</th>
             <th>Image</th>
             <th>Status</th>
+            <th>Compose</th>
             <th>Created</th>
             <th>Ports</th>
             {canManage && <th>Actions</th>}
@@ -67,6 +68,20 @@ export default function ContainerList({
               </td>
               <td>
                 {getStatusBadge(container.status, container.state)}
+              </td>
+              <td>
+                {container.labels?.['com.docker.compose.project'] ? (
+                  <div>
+                    <span className="badge bg-soft-primary text-primary">
+                      {container.labels['com.docker.compose.project']}
+                    </span>
+                    <small className="d-block text-muted">
+                      {container.labels['com.docker.compose.service']}
+                    </small>
+                  </div>
+                ) : (
+                  <span className="text-muted">-</span>
+                )}
               </td>
               <td>
                 <span className="text-muted font-size-13">

@@ -83,6 +83,7 @@ export default function ContainerDetails() {
                       <th className="text-muted">ID</th>
                       <th className="text-muted">Status</th>
                       <th className="text-muted">Image</th>
+                      <th className="text-muted">Compose</th>
                       <th className="text-muted">Created</th>
                       <th className="text-muted">Ports</th>
                     </tr>
@@ -92,6 +93,20 @@ export default function ContainerDetails() {
                       <td className="font-monospace">{container.id.substring(0, 12)}</td>
                       <td>{getStatusBadge(container.status)}</td>
                       <td>{container.image}</td>
+                      <td>
+                        {container.labels?.['com.docker.compose.project'] ? (
+                          <div>
+                            <span className="badge bg-soft-primary text-primary">
+                              {container.labels['com.docker.compose.project']}
+                            </span>
+                            <small className="d-block text-muted">
+                              {container.labels['com.docker.compose.service']}
+                            </small>
+                          </div>
+                        ) : (
+                          <span className="text-muted">-</span>
+                        )}
+                      </td>
                       <td>{new Date(container.created).toLocaleString()}</td>
                       <td>
                         {container.ports && Object.keys(container.ports).length > 0 ? (
