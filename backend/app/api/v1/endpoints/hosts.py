@@ -6,8 +6,8 @@ from sqlalchemy import select, and_, or_
 from sqlalchemy.orm import selectinload
 import docker
 
-from app.api import deps
-from app.core.security import require_admin, require_role
+from app.db.session import get_db
+from app.core.security import require_admin, require_role, get_current_active_user
 from app.models import (
     User, DockerHost, HostCredential, HostTag, 
     UserHostPermission, UserRole, HostStatus
@@ -18,7 +18,7 @@ from app.schemas.docker_host import (
     UserHostPermissionCreate, UserHostPermissionResponse
 )
 from app.services.encryption import get_encryption_service
-from app.services.docker_connection_manager import get_docker_connection_manager
+from app.services.docker_connection_manager import DockerConnectionManager, get_docker_connection_manager
 from app.services.audit import audit_log
 from app.core.logging import logger
 
@@ -30,8 +30,8 @@ async def list_hosts(
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=100),
     active_only: bool = Query(True),
-    current_user: User = Depends(deps.get_current_active_user),
-    db: AsyncSession = Depends(deps.get_db)
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
 ):
     """List Docker hosts accessible to the current user"""
     # Build base query
@@ -80,7 +80,7 @@ async def list_hosts(
 async def create_host(
     host_data: DockerHostCreate,
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(deps.get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Create a new Docker host (admin only)"""
     # Check if host with same name exists
@@ -173,8 +173,8 @@ async def create_host(
 @router.get("/{host_id}", response_model=DockerHostResponse)
 async def get_host(
     host_id: UUID,
-    current_user: User = Depends(deps.get_current_active_user),
-    db: AsyncSession = Depends(deps.get_db),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
     connection_manager: DockerConnectionManager = Depends(lambda: get_docker_connection_manager())
 ):
     """Get Docker host details"""
@@ -203,7 +203,7 @@ async def update_host(
     host_id: UUID,
     host_update: DockerHostUpdate,
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(deps.get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Update Docker host (admin only)"""
     result = await db.execute(
@@ -250,7 +250,7 @@ async def update_host(
 async def delete_host(
     host_id: UUID,
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(deps.get_db),
+    db: AsyncSession = Depends(get_db),
     connection_manager: DockerConnectionManager = Depends(lambda: get_docker_connection_manager())
 ):
     """Delete Docker host (admin only)"""
@@ -286,8 +286,8 @@ async def delete_host(
 @router.post("/{host_id}/test", response_model=HostConnectionTest)
 async def test_host_connection(
     host_id: UUID,
-    current_user: User = Depends(deps.get_current_active_user),
-    db: AsyncSession = Depends(deps.get_db),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
     connection_manager: DockerConnectionManager = Depends(lambda: get_docker_connection_manager())
 ):
     """Test connection to a Docker host"""
@@ -317,7 +317,7 @@ async def test_host_connection(
 async def list_host_permissions(
     host_id: UUID,
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(deps.get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """List permissions for a host (admin only)"""
     result = await db.execute(
@@ -337,7 +337,7 @@ async def grant_host_permission(
     host_id: UUID,
     permission_data: UserHostPermissionCreate,
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(deps.get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Grant user permission to access a host (admin only)"""
     # Check if permission already exists
@@ -388,7 +388,7 @@ async def revoke_host_permission(
     host_id: UUID,
     user_id: UUID,
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(deps.get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Revoke user permission to access a host (admin only)"""
     result = await db.execute(

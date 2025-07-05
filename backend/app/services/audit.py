@@ -8,6 +8,35 @@ from app.models.audit_log import AuditLog
 from app.models.user import User
 
 
+# Helper function for endpoints
+async def audit_log(
+    db: AsyncSession,
+    user: User,
+    action: str,
+    resource_type: Optional[str] = None,
+    resource_id: Optional[str] = None,
+    host_id: Optional[UUID] = None,
+    details: Optional[Dict[str, Any]] = None,
+    request: Optional[Request] = None
+) -> AuditLog:
+    """Helper function to create audit logs"""
+    audit_entry = AuditLog(
+        user_id=user.id,
+        action=action,
+        resource_type=resource_type,
+        resource_id=resource_id,
+        host_id=host_id,
+        details=details,
+        ip_address=request.client.host if request else None,
+        user_agent=request.headers.get("user-agent") if request else None
+    )
+    
+    db.add(audit_entry)
+    await db.commit()
+    
+    return audit_entry
+
+
 class AuditService:
     def __init__(self, db: AsyncSession):
         self.db = db

@@ -1,4 +1,4 @@
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.models.audit_log import AuditLog
 from app.models.refresh_token import RefreshToken
 from app.models.docker_host import (
@@ -8,7 +8,7 @@ from app.models.docker_host import (
 )
 
 __all__ = [
-    "User", "AuditLog", "RefreshToken",
+    "User", "UserRole", "AuditLog", "RefreshToken",
     "DockerHost", "HostCredential", "UserHostPermission",
     "HostTag", "HostConnectionStats", "HostType",
     "ConnectionType", "HostStatus"

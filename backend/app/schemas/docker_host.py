@@ -110,7 +110,7 @@ class HostConnectionTest(BaseModel):
 
 class UserHostPermissionCreate(BaseModel):
     user_id: UUID4
-    permission_level: str = Field(..., regex="^(viewer|operator|admin)$")
+    permission_level: str = Field(..., pattern="^(viewer|operator|admin)$")
 
 
 class UserHostPermissionResponse(BaseModel):
