@@ -58,6 +58,8 @@ export default function ContainerDetails() {
     }
   }
 
+  const isRunning = container.status === 'running'
+
   return (
     <>
       <PageTitle
@@ -133,9 +135,13 @@ export default function ContainerDetails() {
                 </li>
                 <li className="nav-item">
                   <a 
-                    className={`nav-link ${activeTab === 'terminal' ? 'active' : ''}`}
+                    className={`nav-link ${activeTab === 'terminal' ? 'active' : ''} ${!isRunning ? 'disabled' : ''}`}
                     href="#"
-                    onClick={(e) => { e.preventDefault(); setActiveTab('terminal') }}
+                    onClick={(e) => { 
+                      e.preventDefault(); 
+                      if (isRunning) setActiveTab('terminal')
+                    }}
+                    title={!isRunning ? 'Terminal is only available for running containers' : ''}
                   >
                     Terminal
                   </a>
@@ -155,7 +161,16 @@ export default function ContainerDetails() {
               {activeTab === 'logs' && <ContainerLogs containerId={container.id} />}
               {activeTab === 'terminal' && (
                 <div className="h-100">
-                  <ContainerTerminal containerId={container.id} />
+                  {isRunning ? (
+                    <ContainerTerminal containerId={container.id} />
+                  ) : (
+                    <div className="d-flex align-items-center justify-content-center h-100 text-muted">
+                      <div className="text-center">
+                        <i className="mdi mdi-console-line mdi-48px mb-3"></i>
+                        <p>Terminal is not available for stopped containers</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
               {activeTab === 'environment' && (
