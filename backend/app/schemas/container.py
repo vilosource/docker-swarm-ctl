@@ -93,3 +93,15 @@ class ContainerStats(BaseModel):
     block_read: int
     block_write: int
     pids: int
+
+
+class ContainerInspect(BaseModel):
+    id: str
+    name: str
+    image: str
+    config: Dict[str, Any]
+    environment: List[str]
+    mounts: List[Dict[str, Any]]
+    network_settings: Dict[str, Any]
+    state: Dict[str, Any]
+    host_config: Dict[str, Any]

@@ -12,6 +12,18 @@ export interface ContainerCreateRequest {
   restart_policy?: 'no' | 'always' | 'on-failure' | 'unless-stopped'
 }
 
+export interface ContainerInspect {
+  id: string
+  name: string
+  image: string
+  config: any
+  environment: string[]
+  mounts: any[]
+  network_settings: any
+  state: any
+  host_config: any
+}
+
 export const containersApi = {
   list: (all = false) => 
     api.get<Container[]>('/containers', { params: { all } }),
@@ -41,4 +53,7 @@ export const containersApi = {
   
   stats: (id: string) => 
     api.get<ContainerStats>(`/containers/${id}/stats`),
+  
+  inspect: (id: string) => 
+    api.get<ContainerInspect>(`/containers/${id}/inspect`),
 }

@@ -5,7 +5,7 @@ import asyncio
 
 from app.db.session import get_db
 from app.core.security import get_current_active_user, require_role
-from app.schemas.container import ContainerCreate, ContainerResponse, ContainerStats
+from app.schemas.container import ContainerCreate, ContainerResponse, ContainerStats, ContainerInspect
 from app.services.docker_client import get_docker_client, handle_docker_errors
 from app.services.audit import AuditService
 from app.models.user import User
@@ -110,6 +110,35 @@ async def get_container(
     try:
         container = client.containers.get(container_id)
         return format_container(container)
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=f"Container {container_id} not found")
+
+
+@router.get("/{container_id}/inspect", response_model=ContainerInspect)
+async def inspect_container(
+    container_id: str,
+    current_user: User = Depends(get_current_active_user)
+):
+    client = get_docker_client()
+    
+    try:
+        container = client.containers.get(container_id)
+        attrs = container.attrs
+        
+        # Extract environment variables from Config
+        env_list = attrs.get("Config", {}).get("Env", [])
+        
+        return ContainerInspect(
+            id=container.id,
+            name=container.name,
+            image=attrs.get("Config", {}).get("Image", ""),
+            config=attrs.get("Config", {}),
+            environment=env_list,
+            mounts=attrs.get("Mounts", []),
+            network_settings=attrs.get("NetworkSettings", {}),
+            state=attrs.get("State", {}),
+            host_config=attrs.get("HostConfig", {})
+        )
     except Exception as e:
         raise HTTPException(status_code=404, detail=f"Container {container_id} not found")
 

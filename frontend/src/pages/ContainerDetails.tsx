@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { containersApi } from '@/api/containers'
 import { ContainerLogs } from '@/components/ContainerLogs'
 import { ContainerTerminal } from '@/components/ContainerTerminal'
+import ContainerEnvironment from '@/components/ContainerEnvironment'
 import PageTitle from '@/components/common/PageTitle'
 
 export default function ContainerDetails() {
@@ -157,9 +158,9 @@ export default function ContainerDetails() {
                 </li>
                 <li className="nav-item">
                   <a 
-                    className={`nav-link ${activeTab === 'environment' ? 'active' : ''} disabled`}
+                    className={`nav-link ${activeTab === 'environment' ? 'active' : ''}`}
                     href="#"
-                    onClick={(e) => e.preventDefault()}
+                    onClick={(e) => { e.preventDefault(); setActiveTab('environment') }}
                   >
                     Environment
                   </a>
@@ -175,7 +176,7 @@ export default function ContainerDetails() {
               )}
               {activeTab === 'environment' && (
                 <div className="p-3">
-                  <p className="text-muted">Environment variables will be shown here</p>
+                  <ContainerEnvironment containerId={container.id} />
                 </div>
               )}
             </div>
