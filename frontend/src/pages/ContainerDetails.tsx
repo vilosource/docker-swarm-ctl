@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { containersApi } from '@/api/containers'
 import { ContainerLogs } from '@/components/ContainerLogs'
-import { ContainerStats } from '@/components/ContainerStats'
 import { ContainerTerminal } from '@/components/ContainerTerminal'
 import PageTitle from '@/components/common/PageTitle'
 
@@ -149,15 +148,6 @@ export default function ContainerDetails() {
                 </li>
                 <li className="nav-item">
                   <a 
-                    className={`nav-link ${activeTab === 'stats' ? 'active' : ''}`}
-                    href="#"
-                    onClick={(e) => { e.preventDefault(); setActiveTab('stats') }}
-                  >
-                    Stats
-                  </a>
-                </li>
-                <li className="nav-item">
-                  <a 
                     className={`nav-link ${activeTab === 'terminal' ? 'active' : ''}`}
                     href="#"
                     onClick={(e) => { e.preventDefault(); setActiveTab('terminal') }}
@@ -176,13 +166,8 @@ export default function ContainerDetails() {
                 </li>
               </ul>
             </div>
-            <div className="card-body p-0" style={{ height: activeTab === 'stats' ? 'auto' : 'calc(100vh - 400px)', minHeight: '400px' }}>
+            <div className="card-body p-0" style={{ height: 'calc(100vh - 400px)', minHeight: '400px' }}>
               {activeTab === 'logs' && <ContainerLogs containerId={container.id} />}
-              {activeTab === 'stats' && (
-                <div className="p-3">
-                  <ContainerStats containerId={container.id} />
-                </div>
-              )}
               {activeTab === 'terminal' && (
                 <div className="h-100">
                   <ContainerTerminal containerId={container.id} />

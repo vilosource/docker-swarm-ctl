@@ -9,6 +9,7 @@ import ContainerDetails from '@/pages/ContainerDetails'
 import Images from '@/pages/Images'
 import Users from '@/pages/Users'
 import Profile from '@/pages/Profile'
+import SystemStats from '@/pages/SystemStats'
 
 function App() {
   const isAuthenticated = useAuthStore((state) => !!state.token)
@@ -20,6 +21,7 @@ function App() {
       <Route element={<ProtectedRoute />}>
         <Route element={<LayoutSimple />}>
           <Route path="/" element={<Dashboard />} />
+          <Route path="/system-stats" element={<SystemStats />} />
           <Route path="/containers" element={<Containers />} />
           <Route path="/containers/:id" element={<ContainerDetails />} />
           <Route path="/images" element={<Images />} />

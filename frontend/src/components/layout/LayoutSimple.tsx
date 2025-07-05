@@ -10,6 +10,11 @@ const navigation = [
     exact: true
   },
   { 
+    name: 'System Stats', 
+    href: '/system-stats', 
+    icon: 'mdi mdi-chart-line'
+  },
+  { 
     name: 'Containers', 
     href: '/containers', 
     icon: 'mdi mdi-docker'
