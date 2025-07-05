@@ -7,8 +7,8 @@
   text-align: center;
   background-color: rgba(255, 255, 255, 0.05);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  height: 64px;
-  line-height: 64px;
+  height: 70px;
+  line-height: 70px;
 }
 
 .left-side-menu .logo {
@@ -30,8 +30,8 @@
   position: relative;
   width: 240px;
   text-align: center;
-  height: 64px;
-  line-height: 64px;
+  height: 70px;
+  line-height: 70px;
   background-color: transparent;
 }
 
@@ -43,12 +43,29 @@
   .left-side-menu .logo-sm {
     display: none;
   }
+  .navbar-custom {
+    position: fixed;
+    left: 240px;
+    right: 0;
+    top: 0;
+    height: 70px;
+    z-index: 1001;
+  }
+  .content-page {
+    margin-left: 240px;
+    padding-top: 70px;
+  }
+  .left-side-menu {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 240px;
+    z-index: 1002;
+  }
 }
 
 @media (max-width: 767.98px) {
-  .left-side-menu {
-    display: none;
-  }
   .navbar-custom .logo-box {
     display: block;
   }
@@ -64,7 +81,7 @@
 .logo-box .logo {
   color: #98a6ad;
   font-weight: 700;
-  line-height: 64px;
+  line-height: 70px;
 }
 
 .navbar-custom .logo-box .logo {
@@ -72,17 +89,32 @@
 }
 
 /* Custom scrollbar for sidebar */
+.left-side-menu {
+  padding-top: 70px;
+}
+
 .left-side-menu [data-simplebar] {
-  height: calc(100% - 64px);
+  height: 100%;
 }
 
 /* Condensed sidebar styles */
 html[data-sidebar-size=condensed] .left-side-menu {
   width: 70px;
+  position: fixed;
+  padding-top: 70px;
 }
 
 html[data-sidebar-size=condensed] .content-page {
-  margin-left: 70px;
+  margin-left: 70px !important;
+}
+
+html[data-sidebar-size=condensed] .navbar-custom {
+  left: 70px;
+}
+
+html[data-sidebar-size=condensed] .logo-box {
+  width: 70px !important;
+  text-align: center;
 }
 
 html[data-sidebar-size=condensed] .logo span.logo-lg {
@@ -101,6 +133,7 @@ html[data-sidebar-size=condensed] .left-side-menu #sidebar-menu span {
 html[data-sidebar-size=condensed] .left-side-menu #sidebar-menu > ul > li > a {
   padding: 15px 20px;
   text-align: center;
+  position: relative;
 }
 
 html[data-sidebar-size=condensed] .left-side-menu #sidebar-menu > ul > li > a i {
@@ -110,6 +143,24 @@ html[data-sidebar-size=condensed] .left-side-menu #sidebar-menu > ul > li > a i 
 
 html[data-sidebar-size=condensed] .user-box {
   display: none;
+}
+
+/* Tooltip on hover for condensed menu */
+html[data-sidebar-size=condensed] .left-side-menu #sidebar-menu > ul > li > a:hover::after {
+  content: attr(title);
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  margin-left: 10px;
+  background: rgba(0, 0, 0, 0.9);
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 3px;
+  white-space: nowrap;
+  z-index: 1000;
+  font-size: 13px;
+  pointer-events: none;
 }
 
 /* Mobile sidebar styles */
@@ -154,8 +205,21 @@ html[data-sidebar-size=condensed] .user-box {
   opacity: 1;
 }
 
+/* Footer positioning */
+.footer {
+  bottom: 0;
+  padding: 20px 24px;
+  position: absolute;
+  right: 0;
+  left: 0;
+  border-top: 1px solid rgba(152, 166, 173, 0.2);
+  background-color: var(--bs-body-bg);
+}
+
 /* Transitions */
 .left-side-menu,
-.content-page {
+.content-page,
+.navbar-custom,
+.footer {
   transition: all 0.3s ease;
 }
