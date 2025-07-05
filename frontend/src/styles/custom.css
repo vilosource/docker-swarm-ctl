@@ -1,0 +1,77 @@
+/* Custom styles for Docker Control Platform */
+
+/* Logo styles for sidebar */
+.left-side-menu .logo-box {
+  display: block;
+  padding: 0;
+  text-align: center;
+  background-color: rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  height: 64px;
+  line-height: 64px;
+}
+
+.left-side-menu .logo {
+  display: inline-block;
+  color: #6c757d;
+  text-decoration: none;
+  padding: 0 20px;
+  vertical-align: middle;
+}
+
+.left-side-menu .logo:hover {
+  color: #98a6ad;
+  text-decoration: none;
+}
+
+/* Logo in navbar for responsive */
+.navbar-custom .logo-box {
+  float: left;
+  position: relative;
+  width: 240px;
+  text-align: center;
+  height: 64px;
+  line-height: 64px;
+  background-color: transparent;
+}
+
+/* Show/hide logo based on screen size */
+@media (min-width: 768px) {
+  .navbar-custom .logo-box {
+    display: none;
+  }
+  .left-side-menu .logo-sm {
+    display: none;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .left-side-menu {
+    display: none;
+  }
+  .navbar-custom .logo-box {
+    display: block;
+  }
+  .logo-lg {
+    display: none;
+  }
+  .logo-sm {
+    display: inline-block;
+  }
+}
+
+/* Ensure logo text is visible */
+.logo-box .logo {
+  color: #98a6ad;
+  font-weight: 700;
+  line-height: 64px;
+}
+
+.navbar-custom .logo-box .logo {
+  color: #fff;
+}
+
+/* Custom scrollbar for sidebar */
+.left-side-menu [data-simplebar] {
+  height: calc(100% - 64px);
+}

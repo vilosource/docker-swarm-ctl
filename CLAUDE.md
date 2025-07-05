@@ -11,6 +11,7 @@ Docker Control Platform - A web-based platform for managing Docker environments 
 
 ## Git Guidelines
 - Git commit message should never mention Claude 
+- Never add any mention of Claude or claude in git commit messages
 
 ## Tech Stack
 

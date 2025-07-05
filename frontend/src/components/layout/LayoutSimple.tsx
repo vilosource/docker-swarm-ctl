@@ -78,8 +78,12 @@ const LayoutSimple: React.FC = () => {
             {/* LOGO */}
             <div className="logo-box">
               <Link to="/" className="logo logo-dark text-center">
+                <span className="logo-sm">
+                  <i className="mdi mdi-docker" style={{ fontSize: '24px' }}></i>
+                </span>
                 <span className="logo-lg">
-                  <span className="text-white h3">Docker Control</span>
+                  <i className="mdi mdi-docker me-2" style={{ fontSize: '24px' }}></i>
+                  <span style={{ fontSize: '18px', fontWeight: 'bold' }}>Docker CTL</span>
                 </span>
               </Link>
             </div>
@@ -99,6 +103,19 @@ const LayoutSimple: React.FC = () => {
         {/* ========== Left Sidebar Start ========== */}
         <div className="left-side-menu">
           <div className="h-100" data-simplebar>
+            {/* Logo box */}
+            <div className="logo-box">
+              <Link to="/" className="logo logo-light text-center">
+                <span className="logo-sm">
+                  <i className="mdi mdi-docker" style={{ fontSize: '24px' }}></i>
+                </span>
+                <span className="logo-lg">
+                  <i className="mdi mdi-docker me-2" style={{ fontSize: '24px' }}></i>
+                  <span style={{ fontSize: '18px', fontWeight: 'bold' }}>Docker CTL</span>
+                </span>
+              </Link>
+            </div>
+
             {/* User box */}
             <div className="user-box text-center">
               <img src="assets/images/users/avatar-1.jpg" alt="user-img" title={user?.username} className="rounded-circle avatar-md" />
