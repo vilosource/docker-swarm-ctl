@@ -69,3 +69,79 @@ export interface PaginatedResponse<T> {
   per_page: number
   pages: number
 }
+
+export type HostType = 'standalone' | 'swarm_manager' | 'swarm_worker'
+export type ConnectionType = 'unix' | 'tcp' | 'ssh'
+export type HostStatus = 'pending' | 'healthy' | 'unhealthy' | 'unreachable'
+
+export interface HostTag {
+  id: string
+  tag_name: string
+  tag_value?: string
+}
+
+export interface DockerHost {
+  id: string
+  name: string
+  description?: string
+  host_type: HostType
+  connection_type: ConnectionType
+  host_url: string
+  is_active: boolean
+  is_default: boolean
+  status: HostStatus
+  last_health_check?: string
+  docker_version?: string
+  api_version?: string
+  os_type?: string
+  architecture?: string
+  swarm_id?: string
+  cluster_name?: string
+  is_leader: boolean
+  created_at: string
+  updated_at: string
+  tags: HostTag[]
+}
+
+export interface HostCredential {
+  credential_type: string
+  credential_value: string
+  credential_metadata?: Record<string, any>
+}
+
+export interface DockerHostCreate {
+  name: string
+  description?: string
+  host_type: HostType
+  connection_type: ConnectionType
+  host_url: string
+  is_active: boolean
+  is_default: boolean
+  tags?: Array<{ tag_name: string; tag_value?: string }>
+  credentials?: HostCredential[]
+}
+
+export interface DockerHostUpdate {
+  name?: string
+  description?: string
+  host_url?: string
+  is_active?: boolean
+  is_default?: boolean
+}
+
+export interface HostConnectionTest {
+  success: boolean
+  message: string
+  docker_version?: string
+  api_version?: string
+  error?: string
+}
+
+export interface UserHostPermission {
+  id: string
+  user_id: string
+  host_id: string
+  permission_level: 'viewer' | 'operator' | 'admin'
+  granted_by?: string
+  granted_at: string
+}

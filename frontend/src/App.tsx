@@ -8,6 +8,7 @@ import Containers from '@/pages/Containers'
 import ContainerDetails from '@/pages/ContainerDetails'
 import Images from '@/pages/Images'
 import Users from '@/pages/Users'
+import Hosts from '@/pages/Hosts'
 import Profile from '@/pages/Profile'
 import SystemStats from '@/pages/SystemStats'
 
@@ -26,6 +27,7 @@ function App() {
           <Route path="/containers/:id" element={<ContainerDetails />} />
           <Route path="/images" element={<Images />} />
           <Route path="/users" element={<Users />} />
+          <Route path="/hosts" element={<Hosts />} />
           <Route path="/profile" element={<Profile />} />
         </Route>
       </Route>

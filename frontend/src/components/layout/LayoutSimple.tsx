@@ -2,6 +2,7 @@ import React from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
 import { useSidebarToggle } from '@/hooks/useSidebarToggle'
+import HostSelector from '@/components/hosts/HostSelector'
 
 const navigation = [
   { 
@@ -31,6 +32,12 @@ const navigation = [
     icon: 'mdi mdi-account-multiple',
     adminOnly: true 
   },
+  { 
+    name: 'Hosts', 
+    href: '/hosts', 
+    icon: 'mdi mdi-server',
+    adminOnly: true 
+  },
 ];
 
 const LayoutSimple: React.FC = () => {
@@ -53,6 +60,11 @@ const LayoutSimple: React.FC = () => {
         <div className="navbar-custom">
           <div className="container-fluid">
             <ul className="list-unstyled topnav-menu float-end mb-0">
+              {/* Host Selector */}
+              <li className="d-none d-lg-block me-2">
+                <HostSelector />
+              </li>
+              
               <li className="dropdown notification-list topbar-dropdown">
                 <a className="nav-link dropdown-toggle nav-user me-0 waves-effect waves-light" data-bs-toggle="dropdown" href="#" role="button" aria-haspopup="false" aria-expanded="false">
                   <img src="assets/images/users/avatar-1.jpg" alt="user-image" className="rounded-circle" />
