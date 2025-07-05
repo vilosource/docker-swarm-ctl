@@ -50,6 +50,7 @@
     top: 0;
     height: 70px;
     z-index: 1001;
+    transition: left 0.3s ease-in-out, width 0.3s ease-in-out;
   }
   .content-page {
     margin-left: 240px;
@@ -109,7 +110,7 @@ html[data-sidebar-size=condensed] .content-page {
 }
 
 html[data-sidebar-size=condensed] .navbar-custom {
-  left: 70px;
+  left: 70px !important;
 }
 
 html[data-sidebar-size=condensed] .logo-box {

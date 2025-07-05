@@ -35,9 +35,11 @@ export function useSidebarToggle() {
       if (newCondensed) {
         document.documentElement.setAttribute('data-sidebar-size', 'condensed')
         localStorage.setItem('sidebar-condensed', 'true')
+        console.log('Sidebar condensed - attribute set')
       } else {
         document.documentElement.removeAttribute('data-sidebar-size')
         localStorage.removeItem('sidebar-condensed')
+        console.log('Sidebar expanded - attribute removed')
       }
     }
   }

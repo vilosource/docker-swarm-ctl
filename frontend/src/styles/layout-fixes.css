@@ -85,6 +85,7 @@
   }
   
   /* Adjust navbar for condensed menu */
+  /* Commented out - handled in custom.css
   .navbar-custom {
     left: 240px !important;
     transition: left 0.3s ease-in-out;
@@ -93,6 +94,7 @@
   body.left-side-menu-condensed .navbar-custom {
     left: 60px !important;
   }
+  */
   
   /* Logo switching for condensed mode */
   .logo-box .logo-lg {
