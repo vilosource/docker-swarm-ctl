@@ -69,14 +69,6 @@ export default function ContainerDetails() {
         ]}
       />
 
-      <div className="row">
-        <div className="col-12">
-          <button className="btn btn-secondary mb-3" onClick={() => navigate('/containers')}>
-            <i className="mdi mdi-arrow-left me-2"></i>Back to Containers
-          </button>
-        </div>
-      </div>
-
       {/* Container Overview */}
       <div className="row">
         <div className="col-12">
