@@ -5,8 +5,8 @@
   display: block;
   padding: 0;
   text-align: center;
-  background-color: rgba(255, 255, 255, 0.05);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background-color: #fafbfe;
+  border-bottom: 1px solid #e3e3e3;
   height: 70px;
   line-height: 70px;
 }
@@ -63,6 +63,7 @@
     bottom: 0;
     width: 240px;
     z-index: 1002;
+    background-color: #fff;
   }
 }
 
@@ -80,7 +81,7 @@
 
 /* Ensure logo text is visible */
 .logo-box .logo {
-  color: #98a6ad;
+  color: #313a46;
   font-weight: 700;
   line-height: 70px;
 }
@@ -92,10 +93,33 @@
 /* Custom scrollbar for sidebar */
 .left-side-menu {
   padding-top: 70px;
+  background-color: #fff;
 }
 
 .left-side-menu [data-simplebar] {
   height: 100%;
+}
+
+/* Sidebar menu styles for white background */
+.left-side-menu #sidebar-menu a {
+  color: #6c757d;
+}
+
+.left-side-menu #sidebar-menu a:hover,
+.left-side-menu #sidebar-menu a.active {
+  color: #5369f8;
+}
+
+.left-side-menu #sidebar-menu .menuitem-active > a {
+  color: #5369f8;
+}
+
+.left-side-menu .user-box p {
+  color: #98a6ad;
+}
+
+.left-side-menu .user-box .dropdown a {
+  color: #313a46;
 }
 
 /* Condensed sidebar styles */
@@ -171,6 +195,7 @@ html[data-sidebar-size=condensed] .left-side-menu #sidebar-menu > ul > li > a:ho
     left: -240px;
     transition: left 0.3s ease;
     z-index: 1001;
+    background-color: #fff;
   }
   
   .sidebar-enable .left-side-menu {
