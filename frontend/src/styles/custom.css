@@ -178,14 +178,17 @@ html[data-sidebar-size=condensed] .left-side-menu #sidebar-menu > ul > li > a:ho
   top: 50%;
   transform: translateY(-50%);
   margin-left: 10px;
-  background: rgba(0, 0, 0, 0.9);
-  color: #fff;
-  padding: 6px 12px;
-  border-radius: 3px;
+  background: #fff;
+  color: #6c757d;
+  padding: 8px 16px;
+  border-radius: 4px;
   white-space: nowrap;
   z-index: 1000;
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 500;
   pointer-events: none;
+  box-shadow: 0 0 24px 0 rgba(0, 0, 0, 0.1);
+  border: 1px solid #e3e3e3;
 }
 
 /* Mobile sidebar styles */
