@@ -75,10 +75,8 @@ export default function Layout() {
   
   const isAdmin = user?.role === 'admin'
   
-  // Initialize theme and handle sidebar toggle
-  useEffect(() => {
-    // Function to show backdrop for mobile
-    const showBackdrop = () => {
+  // Function to show backdrop for mobile
+  const showBackdrop = () => {
       const existingBackdrop = document.getElementById('custom-backdrop')
       if (!existingBackdrop) {
         const backdrop = document.createElement('div')
@@ -93,16 +91,18 @@ export default function Layout() {
           hideBackdrop()
         })
       }
-    }
-    
-    // Function to hide backdrop
-    const hideBackdrop = () => {
+  }
+  
+  // Function to hide backdrop
+  const hideBackdrop = () => {
       const backdrop = document.getElementById('custom-backdrop')
       if (backdrop) {
         backdrop.remove()
       }
-    }
-    
+  }
+  
+  // Initialize theme and handle sidebar toggle
+  useEffect(() => {
     // Add event delegation for button-menu-mobile since React re-renders
     const handleMenuToggle = (e: MouseEvent) => {
       const target = e.target as HTMLElement
@@ -221,22 +221,15 @@ export default function Layout() {
           
           {/* LOGO */}
           <div className="logo-box">
-            <a href="/" className="logo logo-light text-center">
+            <Link to="/" className="logo logo-dark text-center">
               <span className="logo-sm">
-                <img src="/assets/images/logo-sm.png" alt="" height="22" />
+                <i className="mdi mdi-docker" style={{ fontSize: '24px' }}></i>
               </span>
               <span className="logo-lg">
-                <img src="/assets/images/logo-light.png" alt="" height="16" />
+                <i className="mdi mdi-docker me-2" style={{ fontSize: '24px' }}></i>
+                <span style={{ fontSize: '18px', fontWeight: 'bold' }}>Docker CTL</span>
               </span>
-            </a>
-            <a href="/" className="logo logo-dark text-center">
-              <span className="logo-sm">
-                <img src="/assets/images/logo-sm.png" alt="" height="22" />
-              </span>
-              <span className="logo-lg">
-                <img src="/assets/images/logo-dark.png" alt="" height="16" />
-              </span>
-            </a>
+            </Link>
           </div>
           
           <ul className="list-unstyled topnav-menu topnav-menu-left mb-0">
@@ -244,6 +237,25 @@ export default function Layout() {
               <button 
                 className="button-menu-mobile waves-effect waves-light"
                 type="button"
+                onClick={(e) => {
+                  e.preventDefault()
+                  
+                  if (window.innerWidth < 992) {
+                    // Mobile - toggle sidebar-enable and show/hide backdrop
+                    const isSidebarOpen = document.body.classList.contains('sidebar-enable')
+                    
+                    if (isSidebarOpen) {
+                      document.body.classList.remove('sidebar-enable')
+                      hideBackdrop()
+                    } else {
+                      document.body.classList.add('sidebar-enable')
+                      showBackdrop()
+                    }
+                  } else {
+                    // Desktop - toggle left-side-menu-condensed
+                    document.body.classList.toggle('left-side-menu-condensed')
+                  }
+                }}
               >
                 <i className="fe-menu"></i>
               </button>
