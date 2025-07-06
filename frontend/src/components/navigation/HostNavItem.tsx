@@ -72,7 +72,7 @@ export default function HostNavItem({ host }: HostNavItemProps) {
           <i className={`mdi mdi-circle ${getStatusColor()} font-10 ms-2`} style={{ fontSize: '8px' }}></i>
         </span>
       </a>
-      <ul className={`nav-second-level ${isExpanded ? 'mm-show' : 'mm-collapse'}`}>
+      <ul className={`docker-hosts-nav-second-level ${isExpanded ? 'mm-show' : 'mm-collapse'}`}>
         {subItems.map((item) => {
           const itemActive = location.pathname === item.href
           return (
