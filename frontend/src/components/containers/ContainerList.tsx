@@ -10,6 +10,7 @@ interface ContainerListProps {
   onStop: (container: Container) => void
   onRemove: (container: Container) => void
   canManage: boolean
+  showHost?: boolean
 }
 
 export default function ContainerList({
@@ -18,6 +19,7 @@ export default function ContainerList({
   onStop,
   onRemove,
   canManage,
+  showHost = false,
 }: ContainerListProps) {
   const tableRef = useRef<HTMLDivElement>(null)
   
@@ -58,6 +60,7 @@ export default function ContainerList({
             <thead>
               <tr>
                 <th data-priority="1">Name</th>
+                {showHost && <th data-priority="2">Host</th>}
                 <th data-priority="2">ID</th>
                 <th data-priority="3">Image</th>
                 <th data-priority="1">Status</th>
@@ -75,6 +78,18 @@ export default function ContainerList({
                   <Link to={`/containers/${container.id}`} className="text-dark">{container.name}</Link>
                 </h5>
               </td>
+              {showHost && (
+                <td>
+                  {container.host_name ? (
+                    <span className="badge bg-soft-primary text-primary">
+                      <i className="mdi mdi-server me-1"></i>
+                      {container.host_name}
+                    </span>
+                  ) : (
+                    <span className="text-muted">-</span>
+                  )}
+                </td>
+              )}
               <td>
                 <code className="font-12">{container.id.substring(0, 12)}</code>
               </td>

@@ -113,6 +113,7 @@ export default function Images() {
                   <thead>
                     <tr>
                       <th>Repository:Tag</th>
+                      <th>Host</th>
                       <th>Image ID</th>
                       <th>Created</th>
                       <th>Size</th>
@@ -126,6 +127,16 @@ export default function Images() {
                           <div className="fw-medium">
                             {image.tags.length > 0 ? image.tags.join(', ') : '<none>:<none>'}
                           </div>
+                        </td>
+                        <td>
+                          {image.host_name ? (
+                            <span className="badge bg-soft-primary text-primary">
+                              <i className="mdi mdi-server me-1"></i>
+                              {image.host_name}
+                            </span>
+                          ) : (
+                            <span className="text-muted">-</span>
+                          )}
                         </td>
                         <td>
                           <code className="text-muted">{image.id.substring(0, 12)}</code>
@@ -148,7 +159,7 @@ export default function Images() {
                     
                     {images.length === 0 && (
                       <tr>
-                        <td colSpan={canManageImages ? 5 : 4} className="text-center text-muted py-4">
+                        <td colSpan={canManageImages ? 6 : 5} className="text-center text-muted py-4">
                           No images found
                         </td>
                       </tr>

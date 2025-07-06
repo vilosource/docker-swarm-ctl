@@ -29,6 +29,8 @@ export interface Container {
   created: string
   ports: Record<string, any>
   labels: Record<string, string>
+  host_id?: string
+  host_name?: string
 }
 
 export interface ContainerStats {
@@ -49,6 +51,8 @@ export interface Image {
   created: string
   size: number
   labels: Record<string, string>
+  host_id?: string
+  host_name?: string
 }
 
 export interface ErrorResponse {

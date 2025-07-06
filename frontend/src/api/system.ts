@@ -141,23 +141,23 @@ export interface DiskUsage {
 }
 
 export const systemApi = {
-  getInfo: async () => {
-    const response = await api.get<SystemInfo>('/system/info')
+  getInfo: async (hostId?: string) => {
+    const response = await api.get<SystemInfo>('/system/info', { params: { host_id: hostId } })
     return response.data
   },
 
-  getVersion: async () => {
-    const response = await api.get<SystemVersion>('/system/version')
+  getVersion: async (hostId?: string) => {
+    const response = await api.get<SystemVersion>('/system/version', { params: { host_id: hostId } })
     return response.data
   },
 
-  getDiskUsage: async () => {
-    const response = await api.get<DiskUsage>('/system/df')
+  getDiskUsage: async (hostId?: string) => {
+    const response = await api.get<DiskUsage>('/system/df', { params: { host_id: hostId } })
     return response.data
   },
 
-  prune: async () => {
-    const response = await api.post('/system/prune')
+  prune: async (volumes = false, hostId?: string) => {
+    const response = await api.post('/system/prune', null, { params: { volumes, host_id: hostId } })
     return response.data
   }
 }

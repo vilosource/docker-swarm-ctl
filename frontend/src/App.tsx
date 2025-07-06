@@ -11,6 +11,9 @@ import Users from '@/pages/Users'
 import Hosts from '@/pages/Hosts'
 import Profile from '@/pages/Profile'
 import SystemStats from '@/pages/SystemStats'
+import HostContainers from '@/pages/HostContainers'
+import HostImages from '@/pages/HostImages'
+import HostSystem from '@/pages/HostSystem'
 
 function App() {
   const isAuthenticated = useAuthStore((state) => !!state.token)
@@ -28,6 +31,9 @@ function App() {
           <Route path="/images" element={<Images />} />
           <Route path="/users" element={<Users />} />
           <Route path="/hosts" element={<Hosts />} />
+          <Route path="/hosts/:hostId/containers" element={<HostContainers />} />
+          <Route path="/hosts/:hostId/images" element={<HostImages />} />
+          <Route path="/hosts/:hostId/system" element={<HostSystem />} />
           <Route path="/profile" element={<Profile />} />
         </Route>
       </Route>

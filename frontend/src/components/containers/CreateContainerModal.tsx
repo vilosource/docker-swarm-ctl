@@ -5,9 +5,10 @@ import { containersApi, ContainerCreateRequest } from '@/api/containers'
 interface CreateContainerModalProps {
   onClose: () => void
   onSuccess: () => void
+  hostId?: string
 }
 
-export default function CreateContainerModal({ onClose, onSuccess }: CreateContainerModalProps) {
+export default function CreateContainerModal({ onClose, onSuccess, hostId }: CreateContainerModalProps) {
   const [formData, setFormData] = useState<ContainerCreateRequest>({
     image: '',
     name: '',
@@ -21,7 +22,7 @@ export default function CreateContainerModal({ onClose, onSuccess }: CreateConta
   const [error, setError] = useState('')
   
   const createMutation = useMutation({
-    mutationFn: containersApi.create,
+    mutationFn: (data: ContainerCreateRequest) => containersApi.create(data, hostId),
     onSuccess: () => {
       onSuccess()
     },

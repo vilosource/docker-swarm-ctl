@@ -1,29 +1,29 @@
 import { useState, useEffect } from 'react'
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '@/store/authStore'
+import { hostsApi } from '@/api/hosts'
+import HostNavItem from '@/components/navigation/HostNavItem'
 
-const navigation = [
+const staticNavigation = [
   { 
     name: 'Dashboard', 
     href: '/', 
     icon: 'mdi mdi-view-dashboard',
     exact: true
   },
+]
+
+const adminNavigation = [
   { 
-    name: 'Containers', 
-    href: '/containers', 
-    icon: 'mdi mdi-docker'
-  },
-  { 
-    name: 'Images', 
-    href: '/images', 
-    icon: 'mdi mdi-layers'
+    name: 'Host Management', 
+    href: '/hosts', 
+    icon: 'mdi mdi-server-network'
   },
   { 
     name: 'Users', 
     href: '/users', 
-    icon: 'mdi mdi-account-multiple',
-    adminOnly: true 
+    icon: 'mdi mdi-account-multiple'
   },
 ]
 
@@ -31,6 +31,16 @@ export default function Layout() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user, logout } = useAuthStore()
+  const [expandedSections, setExpandedSections] = useState<string[]>(['all-hosts'])
+  
+  // Fetch hosts for navigation
+  const { data: hostsData } = useQuery({
+    queryKey: ['hosts', 'navigation'],
+    queryFn: () => hostsApi.list({ active_only: true }),
+    staleTime: 30000, // Refresh every 30 seconds
+  })
+  
+  const hosts = hostsData?.items || []
   
   const handleLogout = async () => {
     await logout()
@@ -235,11 +245,10 @@ export default function Layout() {
           {/* Sidebar */}
           <div id="sidebar-menu">
             <ul id="side-menu">
+              {/* Main Navigation */}
               <li className="menu-title">Navigation</li>
               
-              {navigation.map((item) => {
-                if (item.adminOnly && !isAdmin) return null
-                
+              {staticNavigation.map((item) => {
                 const isActive = item.exact 
                   ? location.pathname === item.href
                   : location.pathname.startsWith(item.href)
@@ -253,6 +262,70 @@ export default function Layout() {
                   </li>
                 )
               })}
+              
+              {/* All Hosts Section */}
+              <li className="menu-title mt-2">Resources</li>
+              <li className={location.pathname.startsWith('/containers') || location.pathname.startsWith('/images') ? 'menuitem-active' : ''}>
+                <a
+                  href="#"
+                  className={`has-arrow ${expandedSections.includes('all-hosts') ? '' : 'collapsed'}`}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    setExpandedSections(prev => 
+                      prev.includes('all-hosts') 
+                        ? prev.filter(s => s !== 'all-hosts')
+                        : [...prev, 'all-hosts']
+                    )
+                  }}
+                  aria-expanded={expandedSections.includes('all-hosts')}
+                >
+                  <i className="mdi mdi-view-grid"></i>
+                  <span>All Hosts</span>
+                </a>
+                <ul className={`nav-second-level ${expandedSections.includes('all-hosts') ? 'mm-show' : 'mm-collapse'}`}>
+                  <li className={location.pathname === '/containers' ? 'menuitem-active' : ''}>
+                    <Link to="/containers" className={location.pathname === '/containers' ? 'active' : ''}>
+                      <i className="mdi mdi-docker"></i>
+                      <span>Containers</span>
+                    </Link>
+                  </li>
+                  <li className={location.pathname === '/images' ? 'menuitem-active' : ''}>
+                    <Link to="/images" className={location.pathname === '/images' ? 'active' : ''}>
+                      <i className="mdi mdi-layers"></i>
+                      <span>Images</span>
+                    </Link>
+                  </li>
+                </ul>
+              </li>
+              
+              {/* Individual Hosts */}
+              {hosts.length > 0 && (
+                <>
+                  <li className="menu-title mt-2">Docker Hosts</li>
+                  {hosts.map((host) => (
+                    <HostNavItem key={host.id} host={host} />
+                  ))}
+                </>
+              )}
+              
+              {/* Admin Section */}
+              {isAdmin && (
+                <>
+                  <li className="menu-title mt-2">Administration</li>
+                  {adminNavigation.map((item) => {
+                    const isActive = location.pathname.startsWith(item.href)
+                    
+                    return (
+                      <li key={item.name} className={isActive ? 'menuitem-active' : ''}>
+                        <Link to={item.href} className={isActive ? 'active' : ''}>
+                          <i className={item.icon}></i>
+                          <span> {item.name} </span>
+                        </Link>
+                      </li>
+                    )
+                  })}
+                </>
+              )}
             </ul>
           </div>
           {/* End Sidebar */}

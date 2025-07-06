@@ -1,13 +1,16 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { containersApi } from '@/api/containers'
+import { hostsApi } from '@/api/hosts'
 import { Container } from '@/types'
 import ContainerList from '@/components/containers/ContainerList'
 import CreateContainerModal from '@/components/containers/CreateContainerModal'
 import { useAuthStore } from '@/store/authStore'
 import PageTitle from '@/components/common/PageTitle'
 
-export default function Containers() {
+export default function HostContainers() {
+  const { hostId } = useParams<{ hostId: string }>()
   const queryClient = useQueryClient()
   const user = useAuthStore((state) => state.user)
   const [showAll, setShowAll] = useState(false)
@@ -15,38 +18,46 @@ export default function Containers() {
   
   const canManageContainers = user?.role === 'admin' || user?.role === 'operator'
   
+  // Fetch host details
+  const { data: host } = useQuery({
+    queryKey: ['hosts', hostId],
+    queryFn: () => hostsApi.get(hostId!),
+    enabled: !!hostId,
+  })
+  
+  // Fetch containers for this specific host
   const { data: containers = [], isLoading } = useQuery({
-    queryKey: ['containers', showAll],
+    queryKey: ['containers', hostId, showAll],
     queryFn: async () => {
-      const response = await containersApi.list(showAll)
+      const response = await containersApi.list(showAll, hostId)
       return response.data
     },
+    enabled: !!hostId,
   })
   
   const startMutation = useMutation({
-    mutationFn: containersApi.start,
+    mutationFn: ({ id }: { id: string }) => containersApi.start(id, hostId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['containers'] })
+      queryClient.invalidateQueries({ queryKey: ['containers', hostId] })
     },
   })
   
   const stopMutation = useMutation({
-    mutationFn: ({ id, timeout }: { id: string; timeout?: number }) => 
-      containersApi.stop(id, timeout),
+    mutationFn: ({ id }: { id: string }) => containersApi.stop(id, hostId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['containers'] })
+      queryClient.invalidateQueries({ queryKey: ['containers', hostId] })
     },
   })
   
   const removeMutation = useMutation({
-    mutationFn: (id: string) => containersApi.remove(id, false, false),
+    mutationFn: ({ id }: { id: string }) => containersApi.remove(id, false, false, hostId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['containers'] })
+      queryClient.invalidateQueries({ queryKey: ['containers', hostId] })
     },
   })
   
   const handleStart = async (container: Container) => {
-    await startMutation.mutateAsync(container.id)
+    await startMutation.mutateAsync({ id: container.id })
   }
   
   const handleStop = async (container: Container) => {
@@ -55,11 +66,11 @@ export default function Containers() {
   
   const handleRemove = async (container: Container) => {
     if (confirm(`Are you sure you want to remove ${container.name}?`)) {
-      await removeMutation.mutateAsync(container.id)
+      await removeMutation.mutateAsync({ id: container.id })
     }
   }
   
-  if (isLoading) {
+  if (isLoading || !host) {
     return (
       <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '400px' }}>
         <div className="spinner-border text-primary" role="status">
@@ -72,9 +83,10 @@ export default function Containers() {
   return (
     <>
       <PageTitle 
-        title="Containers" 
+        title={`${host.name} - Containers`} 
         breadcrumb={[
-          { title: 'Docker', href: '#' },
+          { title: 'Hosts', href: '/hosts' },
+          { title: host.name, href: '#' },
           { title: 'Containers' }
         ]}
       />
@@ -85,17 +97,23 @@ export default function Containers() {
             <div className="card-body">
               <div className="row mb-2">
                 <div className="col-sm-8">
-                  <div className="form-check form-check-inline">
-                    <input
-                      type="checkbox"
-                      className="form-check-input"
-                      id="showAllContainers"
-                      checked={showAll}
-                      onChange={(e) => setShowAll(e.target.checked)}
-                    />
-                    <label className="form-check-label" htmlFor="showAllContainers">
-                      Show all containers
-                    </label>
+                  <div className="d-flex align-items-center">
+                    <div className="form-check form-check-inline">
+                      <input
+                        type="checkbox"
+                        className="form-check-input"
+                        id="showAllContainers"
+                        checked={showAll}
+                        onChange={(e) => setShowAll(e.target.checked)}
+                      />
+                      <label className="form-check-label" htmlFor="showAllContainers">
+                        Show all containers
+                      </label>
+                    </div>
+                    <span className="ms-3 text-muted">
+                      <i className="mdi mdi-server me-1"></i>
+                      {host.host_url}
+                    </span>
                   </div>
                 </div>
                 <div className="col-sm-4">
@@ -118,7 +136,6 @@ export default function Containers() {
                 onStop={handleStop}
                 onRemove={handleRemove}
                 canManage={canManageContainers}
-                showHost={true}
               />
             </div>
           </div>
@@ -127,10 +144,11 @@ export default function Containers() {
       
       {showCreateModal && (
         <CreateContainerModal
+          hostId={hostId}
           onClose={() => setShowCreateModal(false)}
           onSuccess={() => {
             setShowCreateModal(false)
-            queryClient.invalidateQueries({ queryKey: ['containers'] })
+            queryClient.invalidateQueries({ queryKey: ['containers', hostId] })
           }}
         />
       )}
