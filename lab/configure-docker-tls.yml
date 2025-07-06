@@ -1,0 +1,179 @@
+---
+- name: Configure Docker with TLS for secure API access
+  hosts: docker_hosts
+  become: yes
+  vars:
+    docker_cert_path: /etc/docker/certs
+    ca_cert_validity: 3650  # 10 years
+    server_cert_validity: 365  # 1 year
+    
+  tasks:
+    - name: Install OpenSSL
+      apt:
+        name: openssl
+        state: present
+
+    - name: Create Docker certificates directory
+      file:
+        path: "{{ docker_cert_path }}"
+        state: directory
+        mode: '0755'
+        owner: root
+        group: root
+
+    - name: Generate CA private key
+      openssl_privatekey:
+        path: "{{ docker_cert_path }}/ca-key.pem"
+        size: 4096
+      delegate_to: "{{ groups['docker_hosts'][0] }}"
+      run_once: true
+
+    - name: Generate CA certificate
+      openssl_csr:
+        path: "{{ docker_cert_path }}/ca.csr"
+        privatekey_path: "{{ docker_cert_path }}/ca-key.pem"
+        common_name: "Docker CA"
+        basic_constraints:
+          - CA:TRUE
+        basic_constraints_critical: yes
+      delegate_to: "{{ groups['docker_hosts'][0] }}"
+      run_once: true
+
+    - name: Self-sign CA certificate
+      openssl_certificate:
+        path: "{{ docker_cert_path }}/ca.pem"
+        csr_path: "{{ docker_cert_path }}/ca.csr"
+        privatekey_path: "{{ docker_cert_path }}/ca-key.pem"
+        provider: selfsigned
+        force: no
+        selfsigned_not_after: "+{{ ca_cert_validity }}d"
+      delegate_to: "{{ groups['docker_hosts'][0] }}"
+      run_once: true
+
+    - name: Fetch CA certificate from first host
+      fetch:
+        src: "{{ docker_cert_path }}/ca.pem"
+        dest: "/tmp/docker-ca.pem"
+        flat: yes
+      delegate_to: "{{ groups['docker_hosts'][0] }}"
+      run_once: true
+
+    - name: Copy CA certificate to all hosts
+      copy:
+        src: "/tmp/docker-ca.pem"
+        dest: "{{ docker_cert_path }}/ca.pem"
+        mode: '0644'
+
+    - name: Get eth0 IP address
+      shell: ip -4 addr show eth0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}'
+      register: eth0_ip
+      changed_when: false
+
+    - name: Generate server private key
+      openssl_privatekey:
+        path: "{{ docker_cert_path }}/server-key.pem"
+        size: 4096
+
+    - name: Generate server certificate request
+      openssl_csr:
+        path: "{{ docker_cert_path }}/server.csr"
+        privatekey_path: "{{ docker_cert_path }}/server-key.pem"
+        common_name: "{{ inventory_hostname }}"
+        subject_alt_name:
+          - "DNS:{{ inventory_hostname }}"
+          - "DNS:{{ inventory_hostname_short }}"
+          - "DNS:localhost"
+          - "IP:{{ eth0_ip.stdout }}"
+          - "IP:127.0.0.1"
+
+    - name: Sign server certificate with CA
+      openssl_certificate:
+        path: "{{ docker_cert_path }}/server-cert.pem"
+        csr_path: "{{ docker_cert_path }}/server.csr"
+        ca_cert: "{{ docker_cert_path }}/ca.pem"
+        ca_privatekey: "/tmp/ca-key.pem"
+        provider: ownca
+        force: no
+        ownca_not_after: "+{{ server_cert_validity }}d"
+      delegate_to: "{{ groups['docker_hosts'][0] }}"
+
+    - name: Copy signed server certificate back
+      copy:
+        src: "{{ docker_cert_path }}/server-cert.pem"
+        dest: "{{ docker_cert_path }}/server-cert.pem"
+        remote_src: yes
+      when: inventory_hostname != groups['docker_hosts'][0]
+
+    - name: Set permissions on certificates
+      file:
+        path: "{{ item }}"
+        mode: '0400'
+        owner: root
+        group: root
+      loop:
+        - "{{ docker_cert_path }}/ca.pem"
+        - "{{ docker_cert_path }}/server-cert.pem"
+        - "{{ docker_cert_path }}/server-key.pem"
+
+    - name: Configure Docker daemon with TLS
+      copy:
+        content: |
+          {
+            "hosts": ["fd://", "tcp://{{ eth0_ip.stdout }}:2376"],
+            "tls": true,
+            "tlsverify": true,
+            "tlscert": "{{ docker_cert_path }}/server-cert.pem",
+            "tlskey": "{{ docker_cert_path }}/server-key.pem",
+            "tlscacert": "{{ docker_cert_path }}/ca.pem"
+          }
+        dest: /etc/docker/daemon.json
+        mode: '0644'
+        backup: yes
+      notify: restart docker
+
+    - name: Remove old systemd override if exists
+      file:
+        path: /etc/systemd/system/docker.service.d/override.conf
+        state: absent
+      notify: restart docker
+
+    - name: Create client certificates directory
+      file:
+        path: "/home/{{ item }}/.docker"
+        state: directory
+        owner: "{{ item }}"
+        group: "{{ item }}"
+        mode: '0700'
+      loop:
+        - ansible
+        - dsctl
+
+    - name: Copy CA certificate for clients
+      copy:
+        src: "{{ docker_cert_path }}/ca.pem"
+        dest: "/home/{{ item }}/.docker/ca.pem"
+        remote_src: yes
+        owner: "{{ item }}"
+        group: "{{ item }}"
+        mode: '0644'
+      loop:
+        - ansible
+        - dsctl
+
+    - name: Display TLS configuration
+      debug:
+        msg:
+          - "Docker TLS endpoint: https://{{ eth0_ip.stdout }}:2376"
+          - "CA certificate: {{ docker_cert_path }}/ca.pem"
+          - "Server certificate: {{ docker_cert_path }}/server-cert.pem"
+          - "To connect remotely, use:"
+          - "  export DOCKER_HOST=tcp://{{ eth0_ip.stdout }}:2376"
+          - "  export DOCKER_TLS_VERIFY=1"
+          - "  export DOCKER_CERT_PATH=/path/to/client/certs"
+
+  handlers:
+    - name: restart docker
+      systemd:
+        name: docker
+        state: restarted
+        daemon_reload: yes

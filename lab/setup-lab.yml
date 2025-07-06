@@ -1,0 +1,176 @@
+---
+- name: Complete Lab Setup - Install Docker and Configure Users
+  hosts: docker_hosts
+  become: yes
+  tasks:
+    # Docker Installation
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install prerequisites
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+        state: present
+
+    - name: Add Docker GPG key
+      ansible.builtin.get_url:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        dest: /usr/share/keyrings/docker-archive-keyring.asc
+        mode: '0644'
+
+    - name: Add Docker repository
+      ansible.builtin.apt_repository:
+        repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.asc] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        state: present
+        filename: docker
+
+    - name: Install Docker packages
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
+        update_cache: yes
+
+    - name: Create Docker service directory
+      file:
+        path: /etc/systemd/system/docker.service.d
+        state: directory
+        mode: '0755'
+
+    - name: Get eth0 IP address
+      shell: ip -4 addr show eth0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}'
+      register: eth0_ip
+      changed_when: false
+
+    - name: Configure Docker to listen on TCP
+      copy:
+        content: |
+          [Service]
+          ExecStart=
+          ExecStart=/usr/bin/dockerd -H fd:// -H tcp://{{ eth0_ip.stdout }}:2375
+        dest: /etc/systemd/system/docker.service.d/override.conf
+        mode: '0644'
+      notify: restart docker
+
+    - name: Reload systemd daemon
+      systemd:
+        daemon_reload: yes
+
+    - name: Ensure Docker service is started and enabled
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+
+    # User Configuration
+    - name: Create dsctl user
+      user:
+        name: dsctl
+        shell: /bin/bash
+        home: /home/dsctl
+        create_home: yes
+        state: present
+
+    - name: Ensure docker group exists
+      group:
+        name: docker
+        state: present
+
+    - name: Add users to docker group
+      user:
+        name: "{{ item }}"
+        groups: docker
+        append: yes
+      loop:
+        - ansible
+        - dsctl
+
+    - name: Create .ssh directory for dsctl
+      file:
+        path: /home/dsctl/.ssh
+        state: directory
+        owner: dsctl
+        group: dsctl
+        mode: '0700'
+
+    - name: Copy authorized_keys from ansible user to dsctl
+      copy:
+        src: /home/ansible/.ssh/authorized_keys
+        dest: /home/dsctl/.ssh/authorized_keys
+        remote_src: yes
+        owner: dsctl
+        group: dsctl
+        mode: '0600'
+      ignore_errors: yes
+
+    - name: Add dsctl to sudoers with NOPASSWD
+      lineinfile:
+        path: /etc/sudoers.d/dsctl
+        line: 'dsctl ALL=(ALL) NOPASSWD:ALL'
+        create: yes
+        mode: '0440'
+        validate: 'visudo -cf %s'
+
+    # Verification
+    - name: Reset connection to apply group changes
+      meta: reset_connection
+
+    - name: Verify Docker installation
+      command: docker --version
+      register: docker_version
+      changed_when: false
+
+    - name: Wait for Docker TCP port
+      wait_for:
+        port: 2375
+        host: "{{ eth0_ip.stdout }}"
+        delay: 5
+        timeout: 30
+
+    - name: Verify Docker TCP access
+      uri:
+        url: "http://{{ eth0_ip.stdout }}:2375/version"
+        method: GET
+      register: docker_tcp_check
+
+    - name: Verify Docker access for ansible user
+      become: no
+      command: docker ps
+      register: ansible_docker_check
+      changed_when: false
+      ignore_errors: yes
+
+    - name: Verify Docker access for dsctl user
+      become: yes
+      become_user: dsctl
+      command: docker ps
+      register: dsctl_docker_check
+      changed_when: false
+      ignore_errors: yes
+
+    - name: Display setup results
+      debug:
+        msg:
+          - "Docker Version: {{ docker_version.stdout }}"
+          - "Docker TCP endpoint: http://{{ eth0_ip.stdout }}:2375"
+          - "eth0 IP: {{ eth0_ip.stdout }}"
+          - "Ansible user Docker access: {{ 'SUCCESS' if ansible_docker_check.rc == 0 else 'FAILED' }}"
+          - "dsctl user Docker access: {{ 'SUCCESS' if dsctl_docker_check.rc == 0 else 'FAILED' }}"
+
+  handlers:
+    - name: restart docker
+      systemd:
+        name: docker
+        state: restarted
+        daemon_reload: yes

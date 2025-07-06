@@ -1,0 +1,93 @@
+---
+- name: Configure Docker to listen on eth0 interface
+  hosts: docker_hosts
+  become: yes
+  
+  tasks:
+    - name: Get eth0 IP address
+      shell: ip -4 addr show eth0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}'
+      register: eth0_ip
+      changed_when: false
+
+    - name: Display network information
+      debug:
+        msg:
+          - "Host: {{ inventory_hostname }}"
+          - "eth0 IP: {{ eth0_ip.stdout }}"
+          - "Will configure Docker to listen on: tcp://{{ eth0_ip.stdout }}:2375"
+
+    - name: Create Docker service directory
+      file:
+        path: /etc/systemd/system/docker.service.d
+        state: directory
+        mode: '0755'
+
+    - name: Configure Docker daemon to listen on eth0
+      copy:
+        content: |
+          [Service]
+          ExecStart=
+          ExecStart=/usr/bin/dockerd -H fd:// -H tcp://{{ eth0_ip.stdout }}:2375
+        dest: /etc/systemd/system/docker.service.d/override.conf
+        mode: '0644'
+      notify: restart docker
+
+    - name: Remove daemon.json if exists (conflicts with override)
+      file:
+        path: /etc/docker/daemon.json
+        state: absent
+      notify: restart docker
+
+    - name: Reload systemd daemon
+      systemd:
+        daemon_reload: yes
+
+    - name: Restart Docker service
+      systemd:
+        name: docker
+        state: restarted
+
+    - name: Wait for Docker to be ready
+      wait_for:
+        port: 2375
+        host: "{{ eth0_ip.stdout }}"
+        delay: 5
+        timeout: 30
+
+    - name: Verify Docker TCP access
+      uri:
+        url: "http://{{ eth0_ip.stdout }}:2375/version"
+        method: GET
+      register: docker_tcp_check
+
+    - name: Display Docker version from API
+      debug:
+        msg: "Docker API version: {{ docker_tcp_check.json.Version }}"
+
+    - name: Configure Docker hosts environment for users
+      lineinfile:
+        path: "/home/{{ item }}/.bashrc"
+        line: 'export DOCKER_HOST=tcp://{{ eth0_ip.stdout }}:2375'
+        create: yes
+        owner: "{{ item }}"
+        group: "{{ item }}"
+      loop:
+        - ansible
+        - dsctl
+
+    - name: Display connection information
+      debug:
+        msg:
+          - "Docker is now listening on: tcp://{{ eth0_ip.stdout }}:2375"
+          - "To connect from the Docker Control Platform, use:"
+          - "  Host: {{ inventory_hostname }}"
+          - "  IP: {{ eth0_ip.stdout }}"
+          - "  Port: 2375"
+          - "  URL: tcp://{{ eth0_ip.stdout }}:2375"
+
+  handlers:
+    - name: restart docker
+      systemd:
+        name: docker
+        state: restarted
+        daemon_reload: yes

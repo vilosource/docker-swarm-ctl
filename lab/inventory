@@ -1,0 +1,12 @@
+[docker_hosts]
+docker-1.lab.viloforge.com ansible_host=192.168.100.11
+docker-2.lab.viloforge.com ansible_host=192.168.100.12
+docker-3.lab.viloforge.com ansible_host=192.168.100.13
+docker-4.lab.viloforge.com ansible_host=192.168.100.14
+
+[docker_hosts:vars]
+ansible_user=ansible
+ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+# Network interface for Docker API
+docker_interface=eth0
+docker_port=2375
