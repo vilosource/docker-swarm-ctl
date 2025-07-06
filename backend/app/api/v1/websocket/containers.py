@@ -277,8 +277,6 @@ async def container_logs_ws(
                     })
                     log_count += 1
                 
-                if not follow:
-                    break
                 # Only log if not self-monitoring
                 if not is_self_monitoring(container_id, docker):
                     logger.info(f"Log stream ended for container {container_id}, sent {log_count} lines")
