@@ -359,35 +359,32 @@ async def container_stats_ws(
                     })
                     await websocket.close()
                     return
-        else:
-            # Local Docker
-            docker = DockerClientFactory.get_client()
-            
-        container = docker.containers.get(container_id)
-        
-        # Use thread executor for synchronous Docker API
-        loop = asyncio.get_event_loop()
-        
-        def get_stats_stream():
-            return container.stats(stream=True, decode=True)
-        
-        # Get the stats generator in a thread
-        stats_generator = await loop.run_in_executor(None, get_stats_stream)
-        
-        def read_next_stat():
-            try:
-                return next(stats_generator)
-            except StopIteration:
-                return None
-            except Exception as e:
-                logger.error(f"Error reading stats: {e}")
-                return None
-        
-        # Stream stats
-        while True:
-            stats = await loop.run_in_executor(None, read_next_stat)
-            if stats is None:
-                break
+                    
+                container = docker.containers.get(container_id)
+                
+                # Use thread executor for synchronous Docker API
+                loop = asyncio.get_event_loop()
+                
+                def get_stats_stream():
+                    return container.stats(stream=True, decode=True)
+                
+                # Get the stats generator in a thread
+                stats_generator = await loop.run_in_executor(None, get_stats_stream)
+                
+                def read_next_stat():
+                    try:
+                        return next(stats_generator)
+                    except StopIteration:
+                        return None
+                    except Exception as e:
+                        logger.error(f"Error reading stats: {e}")
+                        return None
+                
+                # Stream stats
+                while True:
+                    stats = await loop.run_in_executor(None, read_next_stat)
+                    if stats is None:
+                        break
             # Calculate CPU usage percentage
             cpu_percent = 0.0
             try:
