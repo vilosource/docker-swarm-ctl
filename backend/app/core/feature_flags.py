@@ -27,11 +27,11 @@ class FeatureFlagService:
     def __init__(self):
         self._flags: Dict[str, bool] = {}
         self._default_values = {
-            FeatureFlag.USE_NEW_WEBSOCKET_HANDLER: False,
-            FeatureFlag.USE_PERMISSION_SERVICE: False,
-            FeatureFlag.USE_CONTAINER_STATS_CALCULATOR: False,
-            FeatureFlag.USE_DECORATOR_PATTERN: False,
-            FeatureFlag.USE_LOG_BUFFER_SERVICE: False,
+            FeatureFlag.USE_NEW_WEBSOCKET_HANDLER: True,
+            FeatureFlag.USE_PERMISSION_SERVICE: True,
+            FeatureFlag.USE_CONTAINER_STATS_CALCULATOR: True,
+            FeatureFlag.USE_DECORATOR_PATTERN: True,
+            FeatureFlag.USE_LOG_BUFFER_SERVICE: True,
         }
         self._load_from_environment()
     

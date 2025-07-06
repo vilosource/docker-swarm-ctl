@@ -153,7 +153,7 @@ class BaseWebSocketHandler(ABC, Generic[T]):
         This method implements the Template Method pattern:
         1. Authenticate user
         2. Get Docker client
-        3. Check self-monitoring
+        3. Check self-monitoring  - A hack to not recursively send logs that create more logs!!
         4. Accept connection
         5. Call handle_connection (implemented by subclass)
         6. Handle errors and cleanup
@@ -177,6 +177,11 @@ class BaseWebSocketHandler(ABC, Generic[T]):
             
             # Check self-monitoring if container_id provided
             self_monitoring = False
+            """This fixes the problem where if we access the container that is running this 
+               code, then we end up getting logs for this container, which creates more logs
+               to be sent , and creates a recursive loop. We simply avoid sending logs to the 
+               frontend in this corner case"""
+
             if container_id and docker_client:
                 self_monitoring = is_self_monitoring(container_id, docker_client)
             
