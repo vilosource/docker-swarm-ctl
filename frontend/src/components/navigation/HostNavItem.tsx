@@ -67,9 +67,9 @@ export default function HostNavItem({ host }: HostNavItemProps) {
         aria-expanded={isExpanded}
       >
         <i className={getHostIcon()}></i>
-        <span className="d-flex align-items-center">
-          <span className="flex-grow-1">{host.name}</span>
-          <i className={`mdi mdi-circle ${getStatusColor()} font-10 ms-1`}></i>
+        <span>
+          {host.name}
+          <i className={`mdi mdi-circle ${getStatusColor()} font-10 ms-2`} style={{ fontSize: '8px' }}></i>
         </span>
       </a>
       <ul className={`nav-second-level ${isExpanded ? 'mm-show' : 'mm-collapse'}`}>
