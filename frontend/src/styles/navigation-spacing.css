@@ -1,0 +1,115 @@
+/* Reduce vertical spacing in navigation menu */
+
+/* Reduce spacing for menu titles */
+#sidebar-menu .menu-title {
+  padding: 8px 20px !important;
+  margin-top: 10px !important;
+  margin-bottom: 5px !important;
+  font-size: 11px !important;
+}
+
+/* First menu title should have less top margin */
+#sidebar-menu .menu-title:first-of-type {
+  margin-top: 5px !important;
+}
+
+/* Reduce padding on main menu items */
+#sidebar-menu > ul > li > a {
+  padding: 10px 20px !important;
+  min-height: auto !important;
+}
+
+/* Reduce padding on submenu items */
+#sidebar-menu .nav-second-level > li > a {
+  padding: 8px 20px 8px 45px !important;
+  min-height: auto !important;
+}
+
+/* Reduce margin between menu items */
+#sidebar-menu > ul > li {
+  margin: 0 !important;
+}
+
+/* Reduce the user box spacing */
+.left-side-menu .user-box {
+  padding: 15px 20px !important;
+  margin-bottom: 0 !important;
+}
+
+.left-side-menu .user-box .user-name {
+  margin-top: 5px !important;
+  margin-bottom: 5px !important;
+}
+
+.left-side-menu .user-box p {
+  margin-bottom: 0 !important;
+}
+
+/* Adjust logo box height to match reduced spacing */
+.left-side-menu .logo-box {
+  height: 60px !important;
+  line-height: 60px !important;
+}
+
+.left-side-menu .logo {
+  line-height: 60px !important;
+}
+
+/* Adjust navbar to match new logo height */
+.navbar-custom {
+  height: 60px !important;
+}
+
+.navbar-custom .logo-box {
+  height: 60px !important;
+  line-height: 60px !important;
+}
+
+/* Adjust content page padding to match new navbar height */
+.content-page {
+  padding-top: 60px !important;
+}
+
+/* Adjust sidebar padding top to match logo height */
+.left-side-menu {
+  padding-top: 60px !important;
+}
+
+/* Reduce space for navigation arrows */
+#sidebar-menu > ul > li > a.has-arrow:after {
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+}
+
+/* Compact the submenu */
+#sidebar-menu .nav-second-level {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+/* Reduce icon size slightly for better proportions */
+#sidebar-menu > ul > li > a > i {
+  font-size: 16px !important;
+  width: 20px !important;
+}
+
+#sidebar-menu .nav-second-level > li > a > i {
+  font-size: 14px !important;
+  width: 18px !important;
+}
+
+/* Condensed mode adjustments */
+html[data-sidebar-size=condensed] .left-side-menu #sidebar-menu > ul > li > a {
+  padding: 12px 20px !important;
+  min-height: 44px !important;
+}
+
+/* Ensure proper spacing in expanded hosts menu */
+.nav-second-level.mm-show {
+  padding: 5px 0 !important;
+}
+
+/* Host status indicator adjustment */
+#sidebar-menu .mdi-circle {
+  vertical-align: middle !important;
+}

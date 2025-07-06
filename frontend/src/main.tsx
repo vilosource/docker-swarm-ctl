@@ -7,6 +7,7 @@ import App from './App'
 import './index.css'
 import './styles/layout-fixes.css'
 import './styles/custom.css'
+import './styles/navigation-spacing.css'
 
 const queryClient = new QueryClient({
   defaultOptions: {
