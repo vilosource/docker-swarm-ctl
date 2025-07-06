@@ -22,13 +22,29 @@ CONTAINER_HOSTNAME = socket.gethostname()
 def is_self_monitoring(container_id: str, docker_client) -> bool:
     """Check if we're monitoring our own container to prevent log loops."""
     try:
+        # First check if the container ID matches our hostname (common in Docker)
+        if CONTAINER_HOSTNAME.startswith(container_id[:12]) or container_id.startswith(CONTAINER_HOSTNAME[:12]):
+            return True
+            
         container = docker_client.containers.get(container_id)
         container_hostname = container.attrs.get('Config', {}).get('Hostname', '')
-        # Also check by container name patterns
+        
+        # Check hostname match
+        if container_hostname == CONTAINER_HOSTNAME:
+            return True
+            
+        # Check by container name patterns
         container_name = container.name
         # Common patterns for backend container names
-        is_backend = any(pattern in container_name.lower() for pattern in ['backend', 'api', 'fastapi'])
-        return container_hostname == CONTAINER_HOSTNAME or is_backend
+        is_backend = any(pattern in container_name.lower() for pattern in ['backend', 'api', 'fastapi', 'swarm-ctl-backend', 'swarm-ctl_backend'])
+        
+        # Also check container labels
+        labels = container.labels
+        service_name = labels.get('com.docker.compose.service', '')
+        if service_name.lower() in ['backend', 'api']:
+            return True
+            
+        return is_backend
     except:
         return False
 
@@ -186,9 +202,28 @@ async def container_logs_ws(
         await websocket.close(code=1008, reason="Insufficient permissions")
         return
     
-    # Register connection
+    # Check if self-monitoring and disable logs entirely
     docker = DockerClientFactory.get_client()
     suppress_logs = is_self_monitoring(container_id, docker)
+    
+    if suppress_logs:
+        # Don't stream logs for our own container to prevent feedback loops
+        await websocket.accept()
+        await websocket.send_json({
+            "type": "info",
+            "message": "Log streaming disabled for backend container to prevent feedback loops",
+            "timestamp": datetime.utcnow().isoformat()
+        })
+        # Keep connection alive but don't send any logs
+        try:
+            while True:
+                await asyncio.sleep(30)
+                await websocket.send_json({"type": "ping"})
+        except WebSocketDisconnect:
+            pass
+        return
+    
+    # Register connection
     if not await manager.connect(websocket, container_id, user.username, suppress_logs):
         return
     

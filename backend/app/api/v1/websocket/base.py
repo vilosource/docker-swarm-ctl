@@ -75,10 +75,14 @@ class ConnectionManager:
         try:
             await websocket.send_json(message)
         except Exception as e:
-            # Don't log the full message content to avoid feedback loops
-            message_type = message.get('type', 'unknown')
+            # Don't log errors at all when dealing with backend container to prevent any feedback
             container_id = message.get('container_id', 'unknown')
-            logger.error(f"Error sending WebSocket message (type: {message_type}, container: {container_id}): {str(e)}")
+            if container_id and any(pattern in container_id for pattern in ['backend', '56865c495bfe']):
+                # Silently fail for backend container
+                return
+            # For other containers, log minimal info
+            message_type = message.get('type', 'unknown')
+            logger.error(f"Error sending WebSocket message (type: {message_type}, container: {container_id[:12]}): {str(e)[:50]}")
     
     async def broadcast_to_container(self, container_id: str, message: dict):
         """Broadcast message to all connections watching a container."""
