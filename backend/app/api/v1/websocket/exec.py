@@ -8,9 +8,26 @@ from app.api.v1.websocket.auth import get_current_user_ws, check_permission
 from app.services.docker_client import DockerClientFactory
 from app.models.user import User
 from docker.errors import NotFound, APIError
+import socket
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+# Get container hostname to detect self-monitoring
+CONTAINER_HOSTNAME = socket.gethostname()
+
+def is_self_monitoring(container_id: str, docker_client) -> bool:
+    """Check if we're monitoring our own container to prevent log loops."""
+    try:
+        container = docker_client.containers.get(container_id)
+        container_hostname = container.attrs.get('Config', {}).get('Hostname', '')
+        # Also check by container name patterns
+        container_name = container.name
+        # Common patterns for backend container names
+        is_backend = any(pattern in container_name.lower() for pattern in ['backend', 'api', 'fastapi'])
+        return container_hostname == CONTAINER_HOSTNAME or is_backend
+    except:
+        return False
 
 
 @router.websocket("/containers/{container_id}/exec")
@@ -33,7 +50,11 @@ async def container_exec_ws(
         return
     
     await websocket.accept()
-    logger.info(f"User {user.username} starting exec session in container {container_id}")
+    
+    # Check if self-monitoring to avoid log loops
+    docker = DockerClientFactory.get_client()
+    if not is_self_monitoring(container_id, docker):
+        logger.info(f"User {user.username} starting exec session in container {container_id}")
     
     exec_instance = None
     exec_socket = None
@@ -61,7 +82,8 @@ async def container_exec_ws(
                     result = container.exec_run(f"which {shell}", stderr=False)
                     if result.exit_code == 0:
                         cmd = shell
-                        logger.info(f"Detected shell: {cmd}")
+                        if not is_self_monitoring(container_id, docker):
+                            logger.info(f"Detected shell: {cmd}")
                         break
                 except Exception:
                     continue
@@ -69,7 +91,8 @@ async def container_exec_ws(
             if not cmd:
                 # Default to sh if nothing found
                 cmd = "/bin/sh"
-                logger.info(f"Using default shell: {cmd}")
+                if not is_self_monitoring(container_id, docker):
+                    logger.info(f"Using default shell: {cmd}")
         
         # Create exec instance
         exec_instance = docker.api.exec_create(
@@ -109,9 +132,11 @@ async def container_exec_ws(
         await asyncio.sleep(0.1)  # Small delay to ensure exec is ready
         try:
             exec_socket._sock.sendall(b'\n')
-            logger.info("Sent initial newline")
+            if not is_self_monitoring(container_id, docker):
+                logger.info("Sent initial newline")
         except Exception as e:
-            logger.debug(f"Initial newline send failed: {e}")
+            if not is_self_monitoring(container_id, docker):
+                logger.debug(f"Initial newline send failed: {e}")
         
         # Create tasks for bidirectional communication
         loop = asyncio.get_event_loop()
@@ -135,14 +160,16 @@ async def container_exec_ws(
                         continue
                     elif not data:
                         # Socket closed
-                        logger.info("Docker socket closed")
+                        if not is_self_monitoring(container_id, docker):
+                            logger.info("Docker socket closed")
                         break
                     
                     # Send data to WebSocket
                     await websocket.send_bytes(data)
                     
                 except Exception as e:
-                    logger.error(f"Error reading from Docker: {e}")
+                    if not is_self_monitoring(container_id, docker):
+                        logger.error(f"Error reading from Docker: {e}")
                     break
         
         async def write_to_docker():
@@ -170,30 +197,36 @@ async def container_exec_ws(
                                 # Docker exec resize API
                                 try:
                                     docker.api.exec_resize(exec_id, height=rows, width=cols)
-                                    logger.info(f"Resized terminal to {rows}x{cols}")
+                                    if not is_self_monitoring(container_id, docker):
+                                        logger.info(f"Resized terminal to {rows}x{cols}")
                                 except Exception as e:
                                     # Ignore resize errors - exec might not be fully started yet
-                                    logger.debug(f"Resize failed (exec may not be started): {e}")
+                                    if not is_self_monitoring(container_id, docker):
+                                        logger.debug(f"Resize failed (exec may not be started): {e}")
                         except json.JSONDecodeError:
                             # Not JSON, treat as terminal input
                             exec_socket._sock.sendall(text_data.encode())
                 except WebSocketDisconnect:
                     break
                 except Exception as e:
-                    logger.error(f"Error writing to Docker: {e}")
+                    if not is_self_monitoring(container_id, docker):
+                        logger.error(f"Error writing to Docker: {e}")
                     break
         
         # Run both tasks concurrently
-        logger.info("Starting read/write tasks")
+        if not is_self_monitoring(container_id, docker):
+            logger.info("Starting read/write tasks")
         try:
             await asyncio.gather(
                 read_from_docker(),
                 write_to_docker()
             )
         except asyncio.CancelledError:
-            logger.info("Tasks cancelled")
+            if not is_self_monitoring(container_id, docker):
+                logger.info("Tasks cancelled")
         except Exception as e:
-            logger.error(f"Error in gather: {e}")
+            if not is_self_monitoring(container_id, docker):
+                logger.error(f"Error in gather: {e}")
     
     except NotFound:
         await websocket.send_json({
@@ -206,7 +239,9 @@ async def container_exec_ws(
             "message": f"Docker API error: {str(e)}"
         })
     except Exception as e:
-        logger.error(f"Error in exec WebSocket: {e}")
+        docker = DockerClientFactory.get_client()
+        if not is_self_monitoring(container_id, docker):
+            logger.error(f"Error in exec WebSocket: {e}")
         try:
             await websocket.send_json({
                 "type": "error",
@@ -221,4 +256,5 @@ async def container_exec_ws(
                 exec_socket.close()
             except:
                 pass
-        logger.info(f"Exec session ended for container {container_id}")
+        if not is_self_monitoring(container_id, docker):
+            logger.info(f"Exec session ended for container {container_id}")

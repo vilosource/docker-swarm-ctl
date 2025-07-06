@@ -4,8 +4,12 @@ from collections import defaultdict
 import asyncio
 import logging
 from datetime import datetime
+import socket
 
 logger = logging.getLogger(__name__)
+
+# Get container hostname to detect self-monitoring
+CONTAINER_HOSTNAME = socket.gethostname()
 
 
 class ConnectionManager:
@@ -26,7 +30,7 @@ class ConnectionManager:
         # Lock for thread-safe operations
         self.lock = asyncio.Lock()
     
-    async def connect(self, websocket: WebSocket, container_id: str, username: str) -> bool:
+    async def connect(self, websocket: WebSocket, container_id: str, username: str, suppress_logs: bool = False) -> bool:
         """Accept and register a new WebSocket connection."""
         async with self.lock:
             # Check connection limits
@@ -43,10 +47,11 @@ class ConnectionManager:
             self.connection_users[websocket] = username
             self.connection_times[websocket] = datetime.utcnow()
             self.user_connections[username] += 1
-            logger.info(f"WebSocket connected: {username} to container {container_id}")
+            if not suppress_logs:
+                logger.info(f"WebSocket connected: {username} to container {container_id}")
             return True
     
-    async def disconnect(self, websocket: WebSocket, container_id: str):
+    async def disconnect(self, websocket: WebSocket, container_id: str, suppress_logs: bool = False):
         """Remove a WebSocket connection."""
         async with self.lock:
             self.active_connections[container_id].discard(websocket)
@@ -62,7 +67,8 @@ class ConnectionManager:
                 if self.user_connections[username] <= 0:
                     del self.user_connections[username]
             
-            logger.info(f"WebSocket disconnected: {username} from container {container_id}")
+            if not suppress_logs:
+                logger.info(f"WebSocket disconnected: {username} from container {container_id}")
     
     async def send_to_connection(self, websocket: WebSocket, message: dict):
         """Send message to a specific connection."""
