@@ -1,14 +1,30 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Dict
 
 from app.db.session import get_db
-from app.core.security import get_current_active_user, require_role
+from app.core.security import get_current_active_user, require_role, require_admin
 from app.services.docker_client import get_docker_client
 from app.services.audit import AuditService
 from app.models.user import User
+from app.core.feature_flags import get_all_feature_flags
 
 
 router = APIRouter()
+
+
+@router.get("/health")
+async def health_check():
+    """Basic health check endpoint"""
+    return {"status": "healthy", "service": "docker-control-platform"}
+
+
+@router.get("/feature-flags", response_model=Dict[str, bool])
+async def get_feature_flags(
+    current_user: User = Depends(require_admin)
+):
+    """Get current feature flags status (admin only)"""
+    return get_all_feature_flags()
 
 
 @router.get("/info")

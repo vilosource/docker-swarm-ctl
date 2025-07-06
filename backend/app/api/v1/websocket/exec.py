@@ -8,45 +8,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.v1.websocket.auth import get_current_user_ws, check_permission
 from app.services.docker_client import DockerClientFactory
 from app.services.docker_connection_manager import get_docker_connection_manager
+from app.services.self_monitoring_detector import is_self_monitoring
 from app.db.session import get_db
 from app.models.user import User
 from docker.errors import NotFound, APIError
-import socket
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-
-# Get container hostname to detect self-monitoring
-CONTAINER_HOSTNAME = socket.gethostname()
-
-def is_self_monitoring(container_id: str, docker_client) -> bool:
-    """Check if we're monitoring our own container to prevent log loops."""
-    try:
-        # First check if the container ID matches our hostname (common in Docker)
-        if CONTAINER_HOSTNAME.startswith(container_id[:12]) or container_id.startswith(CONTAINER_HOSTNAME[:12]):
-            return True
-            
-        container = docker_client.containers.get(container_id)
-        container_hostname = container.attrs.get('Config', {}).get('Hostname', '')
-        
-        # Check hostname match
-        if container_hostname == CONTAINER_HOSTNAME:
-            return True
-            
-        # Check by container name patterns
-        container_name = container.name
-        # Common patterns for backend container names
-        is_backend = any(pattern in container_name.lower() for pattern in ['backend', 'api', 'fastapi', 'swarm-ctl-backend', 'swarm-ctl_backend'])
-        
-        # Also check container labels
-        labels = container.labels
-        service_name = labels.get('com.docker.compose.service', '')
-        if service_name.lower() in ['backend', 'api']:
-            return True
-            
-        return is_backend
-    except:
-        return False
 
 
 @router.websocket("/containers/{container_id}/exec")

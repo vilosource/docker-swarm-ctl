@@ -14,6 +14,9 @@ from app.services.docker_service import (
 from app.services.audit import AuditService
 from app.models.user import User
 from app.core.exceptions import DockerOperationError, AuthorizationError
+from app.core.feature_flags import FeatureFlag, is_feature_enabled
+from app.services.container_stats_calculator import calculate_container_stats
+from app.api.decorators import audit_operation, handle_docker_errors
 
 
 router = APIRouter()
@@ -358,52 +361,54 @@ async def get_container_logs(
 
 
 @router.get("/{container_id}/stats", response_model=ContainerStats)
+@handle_docker_errors()
 async def get_container_stats(
     container_id: str,
     host_id: Optional[str] = Query(None, description="Docker host ID (for multi-host deployments)"),
     docker_service: IDockerService = Depends(get_docker_service_dep)
 ):
     """Get real-time container resource usage statistics"""
-    try:
-        stats = await docker_service.get_container_stats(
-            container_id=container_id,
-            host_id=host_id
-        )
-        
-        # Calculate CPU percentage
-        cpu_delta = stats["cpu_stats"]["cpu_usage"]["total_usage"] - \
-                    stats["precpu_stats"]["cpu_usage"]["total_usage"]
-        system_delta = stats["cpu_stats"]["system_cpu_usage"] - \
-                      stats["precpu_stats"]["system_cpu_usage"]
-        cpu_percent = (cpu_delta / system_delta) * 100.0 if system_delta > 0 else 0.0
-        
-        # Memory stats
-        memory_usage = stats["memory_stats"]["usage"]
-        memory_limit = stats["memory_stats"]["limit"]
-        memory_percent = (memory_usage / memory_limit) * 100.0 if memory_limit > 0 else 0.0
-        
-        # Network stats
-        network_rx = sum(v["rx_bytes"] for v in stats["networks"].values()) if "networks" in stats else 0
-        network_tx = sum(v["tx_bytes"] for v in stats["networks"].values()) if "networks" in stats else 0
-        
-        # Block I/O stats
-        block_read = sum(item["value"] for item in stats["blkio_stats"]["io_service_bytes_recursive"] 
-                        if item["op"] == "Read") if "blkio_stats" in stats else 0
-        block_write = sum(item["value"] for item in stats["blkio_stats"]["io_service_bytes_recursive"] 
-                         if item["op"] == "Write") if "blkio_stats" in stats else 0
-        
-        return ContainerStats(
-            cpu_percent=cpu_percent,
-            memory_usage=memory_usage,
-            memory_limit=memory_limit,
-            memory_percent=memory_percent,
-            network_rx=network_rx,
-            network_tx=network_tx,
-            block_read=block_read,
-            block_write=block_write,
-            pids=stats["pids_stats"]["current"] if "pids_stats" in stats else 0
-        )
-    except AuthorizationError as e:
-        raise HTTPException(status_code=403, detail=str(e))
-    except DockerOperationError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    # Get raw stats from Docker
+    raw_stats = await docker_service.get_container_stats(
+        container_id=container_id,
+        host_id=host_id
+    )
+    
+    # Use new calculator if feature flag is enabled
+    if is_feature_enabled(FeatureFlag.USE_CONTAINER_STATS_CALCULATOR):
+        return calculate_container_stats(raw_stats)
+    
+    # Legacy calculation code (will be removed after testing)
+    # Calculate CPU percentage
+    cpu_delta = raw_stats["cpu_stats"]["cpu_usage"]["total_usage"] - \
+                raw_stats["precpu_stats"]["cpu_usage"]["total_usage"]
+    system_delta = raw_stats["cpu_stats"]["system_cpu_usage"] - \
+                  raw_stats["precpu_stats"]["system_cpu_usage"]
+    cpu_percent = (cpu_delta / system_delta) * 100.0 if system_delta > 0 else 0.0
+    
+    # Memory stats
+    memory_usage = raw_stats["memory_stats"]["usage"]
+    memory_limit = raw_stats["memory_stats"]["limit"]
+    memory_percent = (memory_usage / memory_limit) * 100.0 if memory_limit > 0 else 0.0
+    
+    # Network stats
+    network_rx = sum(v["rx_bytes"] for v in raw_stats["networks"].values()) if "networks" in raw_stats else 0
+    network_tx = sum(v["tx_bytes"] for v in raw_stats["networks"].values()) if "networks" in raw_stats else 0
+    
+    # Block I/O stats
+    block_read = sum(item["value"] for item in raw_stats["blkio_stats"]["io_service_bytes_recursive"] 
+                    if item["op"] == "Read") if "blkio_stats" in raw_stats else 0
+    block_write = sum(item["value"] for item in raw_stats["blkio_stats"]["io_service_bytes_recursive"] 
+                     if item["op"] == "Write") if "blkio_stats" in raw_stats else 0
+    
+    return ContainerStats(
+        cpu_percent=cpu_percent,
+        memory_usage=memory_usage,
+        memory_limit=memory_limit,
+        memory_percent=memory_percent,
+        network_rx=network_rx,
+        network_tx=network_tx,
+        block_read=block_read,
+        block_write=block_write,
+        pids=raw_stats["pids_stats"]["current"] if "pids_stats" in raw_stats else 0
+    )
