@@ -45,12 +45,30 @@ This document tracks the progress of backend refactoring to reduce cognitive com
      - OwnershipPolicy (extensible)
    - Centralized permission checking with caching
 
-## In Progress Tasks
+### Phase 1: WebSocket Handler Refactoring (✅ Complete)
 
-### Phase 1: WebSocket Handler Refactoring
-- [ ] Create BaseWebSocketHandler class
-- [ ] Create LogBufferService for container log buffering
-- [ ] Refactor LogStreamManager as proper singleton
+6. **BaseWebSocketHandler** ✅
+   - Created `app/api/v1/websocket/base_handler.py`
+   - Implements Template Method pattern
+   - Reduces WebSocket handler complexity from 140+ lines to ~50 lines
+   - Provides WebSocketContext for cleaner parameter passing
+   - Handles authentication, Docker client setup, and error handling
+
+7. **LogBufferService** ✅
+   - Created `app/services/log_buffer_service.py`
+   - Centralized log buffer management with configurable retention
+   - Memory usage monitoring and automatic cleanup
+   - LRU eviction when buffer limit reached
+   - Background cleanup task for expired buffers
+
+8. **LogStreamManager** ✅
+   - Created `app/services/log_stream_manager.py`
+   - Proper singleton implementation preventing duplicate streams
+   - Stream lifecycle management with subscriber tracking
+   - Integration with LogBufferService for persistent buffering
+   - Context manager support for clean resource management
+
+## In Progress Tasks
 
 ### Phase 2: Docker Service Layer Refactoring
 - [ ] Consolidate SingleHost/MultiHost implementations
