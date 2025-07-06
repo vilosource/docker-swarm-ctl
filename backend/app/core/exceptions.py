@@ -129,3 +129,8 @@ class DockerOperationError(ExternalServiceError):
 class DatabaseConnectionError(ExternalServiceError):
     def __init__(self, message: str = "Database connection failed"):
         super().__init__(message, "DATABASE_CONNECTION_ERROR", status.HTTP_503_SERVICE_UNAVAILABLE)
+
+
+class DockerStreamError(ExternalServiceError):
+    def __init__(self, message: str = "Docker stream operation failed"):
+        super().__init__(message, "DOCKER_STREAM_ERROR", status.HTTP_502_BAD_GATEWAY)

@@ -20,7 +20,7 @@ from app.core.exceptions import DockerOperationError
 from app.core.logging import logger
 from app.models import User
 from app.db.session import get_db
-from app.core.security import get_current_user_ws
+from app.api.v1.websocket.auth import get_current_user_ws
 
 
 class ContainerLogsHandler(EnhancedWebSocketHandler):

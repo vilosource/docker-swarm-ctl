@@ -19,6 +19,17 @@ from app.api.v1.websocket.enhanced_base_handler import (
 from app.models import User
 
 
+# Concrete test implementation
+class TestWebSocketHandler(EnhancedWebSocketHandler):
+    """Concrete implementation for testing"""
+    
+    def get_required_permission(self) -> str:
+        return "viewer"
+    
+    async def handle_connection(self) -> None:
+        pass
+
+
 class TestWebSocketState:
     """Test WebSocket state management"""
     
@@ -28,7 +39,7 @@ class TestWebSocketState:
         websocket = Mock(spec=WebSocket)
         user = Mock(spec=User)
         db = Mock(spec=AsyncSession)
-        return EnhancedWebSocketHandler(
+        return TestWebSocketHandler(
             websocket=websocket,
             user=user,
             db=db,
@@ -99,7 +110,7 @@ class TestResourceManagement:
         websocket = Mock(spec=WebSocket)
         user = Mock(spec=User)
         db = Mock(spec=AsyncSession)
-        return EnhancedWebSocketHandler(
+        return TestWebSocketHandler(
             websocket=websocket,
             user=user,
             db=db,
@@ -237,7 +248,7 @@ class TestMetricsAndHealth:
         websocket = AsyncMock(spec=WebSocket)
         user = Mock(spec=User)
         db = Mock(spec=AsyncSession)
-        return EnhancedWebSocketHandler(
+        return TestWebSocketHandler(
             websocket=websocket,
             user=user,
             db=db,
@@ -323,7 +334,7 @@ class TestGracefulShutdown:
         websocket = AsyncMock(spec=WebSocket)
         user = Mock(spec=User)
         db = Mock(spec=AsyncSession)
-        return EnhancedWebSocketHandler(
+        return TestWebSocketHandler(
             websocket=websocket,
             user=user,
             db=db,
@@ -363,7 +374,7 @@ class TestRetryMechanism:
         websocket = Mock(spec=WebSocket)
         user = Mock(spec=User)
         db = Mock(spec=AsyncSession)
-        return EnhancedWebSocketHandler(
+        return TestWebSocketHandler(
             websocket=websocket,
             user=user,
             db=db,

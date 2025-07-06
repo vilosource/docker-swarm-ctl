@@ -87,7 +87,12 @@ class EnhancedWebSocketHandler(BaseWebSocketHandler):
         resource_id: str,
         resource_type: str
     ):
-        super().__init__(websocket, user, db, resource_id, resource_type)
+        super().__init__()  # BaseWebSocketHandler has no args
+        self.websocket = websocket
+        self.user = user
+        self.db = db
+        self.resource_id = resource_id
+        self.resource_type = resource_type
         self._state = WebSocketState.CONNECTING
         self._resources: List[ManagedResource] = []
         self._metrics = {
@@ -337,3 +342,60 @@ class EnhancedWebSocketHandler(BaseWebSocketHandler):
                     logger.error(f"Operation failed after {max_retries} attempts: {e}")
         
         raise last_error
+    
+    # Methods to make it compatible with base handler's template pattern
+    async def send_message(self, message_type: str, data: Any, **kwargs) -> None:
+        """Send a message to the WebSocket client"""
+        message = {
+            "type": message_type,
+            "data": data,
+            "timestamp": datetime.utcnow().isoformat(),
+            **kwargs
+        }
+        await self.websocket.send_json(message)
+        self._metrics["messages_sent"] += 1
+    
+    async def send_error(self, message: str) -> None:
+        """Send an error message to the client"""
+        await self.send_message("error", {"message": message})
+    
+    async def send_connected(self) -> None:
+        """Send connection confirmation"""
+        await self.send_message("connected", {
+            "user": self.user.username,
+            "resource_id": self.resource_id,
+            "resource_type": self.resource_type
+        })
+    
+    # These need to be implemented by subclasses to work with base handler
+    async def on_connect(self) -> None:
+        """Handle connection initialization - override in subclass"""
+        pass
+    
+    async def handle_message(self, message: Dict[str, Any]) -> None:
+        """Handle incoming WebSocket message - override in subclass"""
+        self._metrics["messages_received"] += 1
+    
+    async def on_disconnect(self) -> None:
+        """Handle disconnection cleanup - override in subclass"""
+        pass
+    
+    # WebSocket lifecycle methods
+    async def connect(self) -> None:
+        """Accept WebSocket connection and initialize"""
+        await self.websocket.accept()
+        await self.on_connect()
+    
+    async def listen(self) -> None:
+        """Listen for incoming messages"""
+        try:
+            while True:
+                message = await self.websocket.receive_json()
+                await self.handle_message(message)
+        except WebSocketDisconnect:
+            pass
+    
+    async def disconnect(self) -> None:
+        """Clean up and close connection"""
+        await self.on_disconnect()
+        await self.graceful_shutdown("Connection closed")

@@ -39,9 +39,11 @@ class LogStreamProcessor(StreamProcessor):
         
         try:
             if self.decode:
-                # Docker log format includes 8-byte header
-                if len(data) > 8:
+                # Check if data has Docker log format header (8 bytes)
+                # Header format: stream type (1 byte) + padding (3 bytes) + size (4 bytes)
+                if len(data) > 8 and data[0] in (0, 1, 2):  # 0=stdin, 1=stdout, 2=stderr
                     return data[8:].decode('utf-8', errors='replace').rstrip('\n')
+                # Otherwise treat as raw log data
                 return data.decode('utf-8', errors='replace').rstrip('\n')
             return data.hex()
         except Exception as e:
@@ -199,10 +201,16 @@ class DockerStreamHandler:
             timestamps=timestamps
         )
         
-        async with self.managed_stream(stream, processor, on_log):
-            # Stream is processed in background task
-            while follow and any(not task.done() for task in self._active_streams):
-                await asyncio.sleep(0.1)
+        if follow:
+            async with self.managed_stream(stream, processor, on_log):
+                # Stream is processed in background task
+                while any(not task.done() for task in self._active_streams):
+                    await asyncio.sleep(0.1)
+        else:
+            # For non-following mode, process synchronously
+            async with self.managed_stream(stream, processor, on_log):
+                # Let the stream process
+                await asyncio.sleep(0.1)  # Give time for processing
     
     async def process_stats_stream(
         self,
@@ -230,10 +238,25 @@ class DockerStreamHandler:
                     await asyncio.sleep(0.1)
         else:
             # Single stats read
-            data = next(stats_stream)
-            stats = await processor.process(data.encode())
-            if stats:
-                await on_stats(stats)
+            if hasattr(stats_stream, '__iter__'):
+                # Handle iterator/list
+                for data in stats_stream:
+                    if isinstance(data, str):
+                        data = data.encode()
+                    elif not isinstance(data, bytes):
+                        data = str(data).encode()
+                    stats = await processor.process(data)
+                    if stats:
+                        await on_stats(stats)
+                        break  # Only process first stat for non-streaming
+            else:
+                # Handle generator
+                data = next(stats_stream)
+                if isinstance(data, str):
+                    data = data.encode()
+                stats = await processor.process(data)
+                if stats:
+                    await on_stats(stats)
     
     async def stop_all_streams(self) -> None:
         """Stop all active streams"""
