@@ -64,7 +64,7 @@ class LogStreamManager:
     """Manages Docker log streams to avoid duplicates."""
     
     @staticmethod
-    async def get_or_create_stream(container_id: str, follow: bool = True, tail: int = 100):
+    async def get_or_create_stream(container_id: str, follow: bool = True, tail: int = 100, docker_client=None):
         """Get existing stream or create new one for a container."""
         if container_id not in stream_locks:
             stream_locks[container_id] = asyncio.Lock()
@@ -72,7 +72,7 @@ class LogStreamManager:
         async with stream_locks[container_id]:
             if container_id not in active_streams or not follow:
                 # Create new stream
-                docker = DockerClientFactory.get_client()
+                docker = docker_client if docker_client else DockerClientFactory.get_client()
                 try:
                     container = docker.containers.get(container_id)
                     # Check if self-monitoring to avoid log loops
@@ -118,10 +118,10 @@ class LogStreamManager:
                         del log_buffers[container_id]
 
 
-async def log_reader(container_id: str, follow: bool, tail: int) -> AsyncGenerator[str, None]:
+async def log_reader(container_id: str, follow: bool, tail: int, docker_client=None) -> AsyncGenerator[str, None]:
     """Read logs from Docker and yield them."""
     try:
-        stream = await LogStreamManager.get_or_create_stream(container_id, follow, tail)
+        stream = await LogStreamManager.get_or_create_stream(container_id, follow, tail, docker_client)
         if stream:
             # Add timeout for reading logs
             last_log_time = asyncio.get_event_loop().time()
@@ -157,26 +157,23 @@ async def log_reader(container_id: str, follow: bool, tail: int) -> AsyncGenerat
                     
                     # Check for timeout
                     if follow and (asyncio.get_event_loop().time() - last_log_time) > timeout:
-                        # Only log timeout if not self-monitoring
-                        docker = DockerClientFactory.get_client()
-                        if not is_self_monitoring(container_id, docker):
-                            logger.info(f"Log stream timeout for container {container_id}")
+                        logger.info(f"Log stream timeout for container {container_id}")
                         break
                     
                     # Allow other tasks to run
                     await asyncio.sleep(0)
             except GeneratorExit:
                 # Only log if not self-monitoring
-                docker = DockerClientFactory.get_client()
-                if not is_self_monitoring(container_id, docker):
+                docker_client = docker_client if docker_client else DockerClientFactory.get_client()
+                if not is_self_monitoring(container_id, docker_client):
                     logger.info(f"Log stream generator closed for container {container_id}")
                 raise
             except Exception as e:
                 logger.error(f"Error in log stream: {e}")
     except Exception as e:
         # Always log errors, but check if self-monitoring
-        docker = DockerClientFactory.get_client()
-        if not is_self_monitoring(container_id, docker):
+        docker_client = docker_client if docker_client else DockerClientFactory.get_client()
+        if not is_self_monitoring(container_id, docker_client):
             logger.error(f"Error reading logs for container {container_id}: {e}")
         yield f"Error: {str(e)}"
     finally:
@@ -207,83 +204,84 @@ async def container_logs_ws(
         return
     
     # Get Docker client based on host_id if provided
-    if host_id:
-        # For multi-host, we need to get DB session and use connection manager
-        # Since we can't use Depends in WebSocket, we'll create a new session
-        from app.db.session import AsyncSessionLocal
-        async with AsyncSessionLocal() as db:
+    db_session = None
+    try:
+        if host_id:
+            # For multi-host, we need to get DB session and use connection manager
+            # Since we can't use Depends in WebSocket, we'll create a new session
+            from app.db.session import AsyncSessionLocal
+            db_session = AsyncSessionLocal()
+            db = await db_session.__aenter__()
             connection_manager = get_docker_connection_manager()
             try:
                 docker = await connection_manager.get_client(host_id, user, db)
             except Exception as e:
                 await websocket.close(code=1011, reason=f"Failed to connect to host: {str(e)}")
                 return
-    else:
-        # Local Docker
-        docker = DockerClientFactory.get_client()
-    
-    # Check if self-monitoring and disable logs entirely
-    suppress_logs = is_self_monitoring(container_id, docker)
-    
-    if suppress_logs:
-        # Don't stream logs for our own container to prevent feedback loops
-        await websocket.accept()
-        await websocket.send_json({
-            "type": "info",
-            "message": "Log streaming disabled for backend container to prevent feedback loops",
-            "timestamp": datetime.utcnow().isoformat()
-        })
-        # Keep connection alive but don't send any logs
-        try:
-            while True:
-                await asyncio.sleep(30)
-                await websocket.send_json({"type": "ping"})
-        except WebSocketDisconnect:
-            pass
-        return
-    
-    # Register connection
-    if not await manager.connect(websocket, container_id, user.username, suppress_logs):
-        return
-    
-    try:
-        # Send buffered logs first if available
-        if container_id in log_buffers and tail > 0:
-            buffered_logs = list(log_buffers[container_id])[-tail:]
-            for log_line in buffered_logs:
-                await websocket.send_json({
-                    "type": "log",
-                    "timestamp": datetime.utcnow().isoformat(),
-                    "data": log_line,
-                    "container_id": container_id
-                })
-        
-        # Check if we're already streaming this container
-        connection_count = manager.get_connection_count(container_id)
-        
-        if connection_count == 1:  # First connection, start streaming
-            # Check if self-monitoring to reduce log spam
+        else:
+            # Local Docker
             docker = DockerClientFactory.get_client()
-            if not is_self_monitoring(container_id, docker):
-                logger.info(f"Starting log stream for container {container_id}")
-            # Start log reading task
-            log_count = 0
-            async for log_line in log_reader(container_id, follow, tail if not log_buffers.get(container_id) else 0):
-                # Broadcast to all connections
-                await manager.broadcast_to_container(container_id, {
-                    "type": "log",
-                    "timestamp": datetime.utcnow().isoformat(),
-                    "data": log_line,
-                    "container_id": container_id
-                })
-                log_count += 1
+        
+        # Check if self-monitoring and disable logs entirely
+        suppress_logs = is_self_monitoring(container_id, docker)
+        
+        if suppress_logs:
+            # Don't stream logs for our own container to prevent feedback loops
+            await websocket.accept()
+            await websocket.send_json({
+                "type": "info",
+                "message": "Log streaming disabled for backend container to prevent feedback loops",
+                "timestamp": datetime.utcnow().isoformat()
+            })
+            # Keep connection alive but don't send any logs
+            try:
+                while True:
+                    await asyncio.sleep(30)
+                    await websocket.send_json({"type": "ping"})
+            except WebSocketDisconnect:
+                pass
+            return
+        
+        # Register connection
+        if not await manager.connect(websocket, container_id, user.username, suppress_logs):
+            return
+        
+        try:
+            # Send buffered logs first if available
+            if container_id in log_buffers and tail > 0:
+                buffered_logs = list(log_buffers[container_id])[-tail:]
+                for log_line in buffered_logs:
+                    await websocket.send_json({
+                        "type": "log",
+                        "timestamp": datetime.utcnow().isoformat(),
+                        "data": log_line,
+                        "container_id": container_id
+                    })
+            
+            # Check if we're already streaming this container
+            connection_count = manager.get_connection_count(container_id)
+            
+            if connection_count == 1:  # First connection, start streaming
+                # Check if self-monitoring to reduce log spam
+                if not is_self_monitoring(container_id, docker):
+                    logger.info(f"Starting log stream for container {container_id}")
+                # Start log reading task
+                log_count = 0
+                async for log_line in log_reader(container_id, follow, tail if not log_buffers.get(container_id) else 0, docker):
+                    # Broadcast to all connections
+                    await manager.broadcast_to_container(container_id, {
+                        "type": "log",
+                        "timestamp": datetime.utcnow().isoformat(),
+                        "data": log_line,
+                        "container_id": container_id
+                    })
+                    log_count += 1
                 
                 if not follow:
                     break
-            # Only log if not self-monitoring
-            docker = DockerClientFactory.get_client()
-            if not is_self_monitoring(container_id, docker):
-                logger.info(f"Log stream ended for container {container_id}, sent {log_count} lines")
+                # Only log if not self-monitoring
+                if not is_self_monitoring(container_id, docker):
+                    logger.info(f"Log stream ended for container {container_id}, sent {log_count} lines")
         else:
             # Just wait for broadcasts from the existing stream
             # Use a more efficient wait mechanism
@@ -302,7 +300,6 @@ async def container_logs_ws(
     
     except WebSocketDisconnect:
         # Only log if not self-monitoring
-        docker = DockerClientFactory.get_client()
         if not is_self_monitoring(container_id, docker):
             logger.info(f"WebSocket disconnected for container {container_id}")
     except Exception as e:
@@ -322,6 +319,10 @@ async def container_logs_ws(
         # If this was the last connection, stop the stream
         if manager.get_connection_count(container_id) == 0:
             await LogStreamManager.stop_stream(container_id)
+            
+        # Close DB session if it was opened
+        if db_session:
+            await db_session.__aexit__(None, None, None)
 
 
 @router.websocket("/containers/{container_id}/stats")

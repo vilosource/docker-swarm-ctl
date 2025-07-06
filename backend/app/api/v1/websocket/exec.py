@@ -276,7 +276,6 @@ async def container_exec_ws(
             "message": f"Docker API error: {str(e)}"
         })
     except Exception as e:
-        docker = DockerClientFactory.get_client()
         if not is_self_monitoring(container_id, docker):
             logger.error(f"Error in exec WebSocket: {e}")
         try:
