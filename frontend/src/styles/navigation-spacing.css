@@ -21,7 +21,7 @@
 
 /* Reduce padding on submenu items */
 #sidebar-menu .nav-second-level > li > a {
-  padding: 8px 20px 8px 35px !important;
+  padding: 8px 15px 8px 25px !important;
   min-height: auto !important;
 }
 
@@ -94,9 +94,9 @@
 }
 
 #sidebar-menu .nav-second-level > li > a > i {
-  font-size: 14px !important;
-  width: 16px !important;
-  margin-right: 8px !important;
+  font-size: 13px !important;
+  width: 14px !important;
+  margin-right: 6px !important;
 }
 
 /* Condensed mode adjustments */
