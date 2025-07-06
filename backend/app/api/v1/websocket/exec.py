@@ -4,8 +4,11 @@ import asyncio
 import json
 import logging
 import struct
+from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.v1.websocket.auth import get_current_user_ws, check_permission
 from app.services.docker_client import DockerClientFactory
+from app.services.docker_connection_manager import get_docker_connection_manager
+from app.db.session import get_db
 from app.models.user import User
 from docker.errors import NotFound, APIError
 import socket
@@ -52,7 +55,8 @@ async def container_exec_ws(
     container_id: str,
     cmd: str = Query(None, description="Command to execute (auto-detect if not provided)"),
     workdir: str = Query("/", description="Working directory"),
-    token: Optional[str] = Query(None, description="JWT token for authentication")
+    token: Optional[str] = Query(None, description="JWT token for authentication"),
+    host_id: Optional[str] = Query(None, description="Docker host ID (for multi-host deployments)")
 ):
     """WebSocket endpoint for interactive container exec sessions."""
     # Authenticate
@@ -67,8 +71,26 @@ async def container_exec_ws(
     
     await websocket.accept()
     
+    # Get Docker client based on host_id if provided
+    if host_id:
+        # For multi-host, we need to get DB session and use connection manager
+        from app.db.session import AsyncSessionLocal
+        async with AsyncSessionLocal() as db:
+            connection_manager = get_docker_connection_manager()
+            try:
+                docker = await connection_manager.get_client(host_id, user, db)
+            except Exception as e:
+                await websocket.send_json({
+                    "type": "error",
+                    "message": f"Failed to connect to host: {str(e)}"
+                })
+                await websocket.close()
+                return
+    else:
+        # Local Docker
+        docker = DockerClientFactory.get_client()
+    
     # Check if self-monitoring to avoid log loops
-    docker = DockerClientFactory.get_client()
     if not is_self_monitoring(container_id, docker):
         logger.info(f"User {user.username} starting exec session in container {container_id}")
     
@@ -76,7 +98,6 @@ async def container_exec_ws(
     exec_socket = None
     
     try:
-        docker = DockerClientFactory.get_client()
         container = docker.containers.get(container_id)
         
         # Check if container is running

@@ -4,9 +4,12 @@ from datetime import datetime
 import asyncio
 import json
 import logging
+from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.v1.websocket.auth import get_current_user_ws, check_permission
 from app.api.v1.websocket.base import manager
 from app.services.docker_client import DockerClientFactory
+from app.services.docker_connection_manager import get_docker_connection_manager
+from app.db.session import get_db
 from app.models.user import User
 from docker.errors import NotFound, APIError
 from collections import deque
@@ -189,7 +192,8 @@ async def container_logs_ws(
     tail: int = Query(100, description="Number of lines to show from the end"),
     timestamps: bool = Query(True, description="Show timestamps"),
     since: Optional[str] = Query(None, description="Show logs since timestamp"),
-    token: Optional[str] = Query(None, description="JWT token for authentication")
+    token: Optional[str] = Query(None, description="JWT token for authentication"),
+    host_id: Optional[str] = Query(None, description="Docker host ID (for multi-host deployments)")
 ):
     """WebSocket endpoint for streaming container logs."""
     # Authenticate
@@ -202,8 +206,23 @@ async def container_logs_ws(
         await websocket.close(code=1008, reason="Insufficient permissions")
         return
     
+    # Get Docker client based on host_id if provided
+    if host_id:
+        # For multi-host, we need to get DB session and use connection manager
+        # Since we can't use Depends in WebSocket, we'll create a new session
+        from app.db.session import AsyncSessionLocal
+        async with AsyncSessionLocal() as db:
+            connection_manager = get_docker_connection_manager()
+            try:
+                docker = await connection_manager.get_client(host_id, user, db)
+            except Exception as e:
+                await websocket.close(code=1011, reason=f"Failed to connect to host: {str(e)}")
+                return
+    else:
+        # Local Docker
+        docker = DockerClientFactory.get_client()
+    
     # Check if self-monitoring and disable logs entirely
-    docker = DockerClientFactory.get_client()
     suppress_logs = is_self_monitoring(container_id, docker)
     
     if suppress_logs:
@@ -309,7 +328,8 @@ async def container_logs_ws(
 async def container_stats_ws(
     websocket: WebSocket,
     container_id: str,
-    token: Optional[str] = Query(None, description="JWT token for authentication")
+    token: Optional[str] = Query(None, description="JWT token for authentication"),
+    host_id: Optional[str] = Query(None, description="Docker host ID (for multi-host deployments)")
 ):
     """WebSocket endpoint for streaming container stats."""
     # Authenticate
@@ -325,7 +345,25 @@ async def container_stats_ws(
     await websocket.accept()
     
     try:
-        docker = DockerClientFactory.get_client()
+        # Get Docker client based on host_id if provided
+        if host_id:
+            # For multi-host, we need to get DB session and use connection manager
+            from app.db.session import AsyncSessionLocal
+            async with AsyncSessionLocal() as db:
+                connection_manager = get_docker_connection_manager()
+                try:
+                    docker = await connection_manager.get_client(host_id, user, db)
+                except Exception as e:
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": f"Failed to connect to host: {str(e)}"
+                    })
+                    await websocket.close()
+                    return
+        else:
+            # Local Docker
+            docker = DockerClientFactory.get_client()
+            
         container = docker.containers.get(container_id)
         
         # Use thread executor for synchronous Docker API
