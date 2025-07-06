@@ -93,9 +93,12 @@
 }
 
 /* Compact the submenu */
-#sidebar-menu .nav-second-level {
+#sidebar-menu .nav-second-level,
+#side-menu .nav-second-level,
+.nav-second-level {
   padding-top: 0 !important;
   padding-bottom: 0 !important;
+  padding-left: 20px !important;
 }
 
 /* Reduce icon size slightly for better proportions */
