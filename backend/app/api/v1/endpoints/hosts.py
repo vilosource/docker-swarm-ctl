@@ -1,5 +1,6 @@
 from typing import List, Optional
 from uuid import UUID
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_
@@ -298,6 +299,18 @@ async def test_host_connection(
         # Test connection
         info = client.info()
         
+        # Update host status and version info
+        result = await db.execute(
+            select(DockerHost).where(DockerHost.id == host_id)
+        )
+        host = result.scalar_one()
+        host.status = HostStatus.healthy
+        host.is_active = True
+        host.docker_version = info.get("ServerVersion")
+        host.api_version = info.get("ApiVersion")
+        host.last_health_check = datetime.utcnow()
+        await db.commit()
+        
         return HostConnectionTest(
             success=True,
             message="Connection successful",
@@ -306,6 +319,19 @@ async def test_host_connection(
         )
     except Exception as e:
         logger.error(f"Connection test failed for host {host_id}: {str(e)}")
+        
+        # Update host status on failure
+        try:
+            result = await db.execute(
+                select(DockerHost).where(DockerHost.id == host_id)
+            )
+            host = result.scalar_one()
+            host.status = HostStatus.unreachable
+            host.last_health_check = datetime.utcnow()
+            await db.commit()
+        except Exception:
+            pass
+        
         return HostConnectionTest(
             success=False,
             message="Connection failed",
