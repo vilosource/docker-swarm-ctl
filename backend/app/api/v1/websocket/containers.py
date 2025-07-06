@@ -343,48 +343,53 @@ async def container_stats_ws(
     
     await websocket.accept()
     
+    db_session = None
     try:
         # Get Docker client based on host_id if provided
         if host_id:
             # For multi-host, we need to get DB session and use connection manager
             from app.db.session import AsyncSessionLocal
-            async with AsyncSessionLocal() as db:
-                connection_manager = get_docker_connection_manager()
-                try:
-                    docker = await connection_manager.get_client(host_id, user, db)
-                except Exception as e:
-                    await websocket.send_json({
-                        "type": "error",
-                        "message": f"Failed to connect to host: {str(e)}"
-                    })
-                    await websocket.close()
-                    return
-                    
-                container = docker.containers.get(container_id)
-                
-                # Use thread executor for synchronous Docker API
-                loop = asyncio.get_event_loop()
-                
-                def get_stats_stream():
-                    return container.stats(stream=True, decode=True)
-                
-                # Get the stats generator in a thread
-                stats_generator = await loop.run_in_executor(None, get_stats_stream)
-                
-                def read_next_stat():
-                    try:
-                        return next(stats_generator)
-                    except StopIteration:
-                        return None
-                    except Exception as e:
-                        logger.error(f"Error reading stats: {e}")
-                        return None
-                
-                # Stream stats
-                while True:
-                    stats = await loop.run_in_executor(None, read_next_stat)
-                    if stats is None:
-                        break
+            db_session = AsyncSessionLocal()
+            db = await db_session.__aenter__()
+            connection_manager = get_docker_connection_manager()
+            try:
+                docker = await connection_manager.get_client(host_id, user, db)
+            except Exception as e:
+                await websocket.send_json({
+                    "type": "error",
+                    "message": f"Failed to connect to host: {str(e)}"
+                })
+                await websocket.close()
+                return
+        else:
+            # Local Docker
+            docker = DockerClientFactory.get_client()
+            
+        container = docker.containers.get(container_id)
+        
+        # Use thread executor for synchronous Docker API
+        loop = asyncio.get_event_loop()
+        
+        def get_stats_stream():
+            return container.stats(stream=True, decode=True)
+        
+        # Get the stats generator in a thread
+        stats_generator = await loop.run_in_executor(None, get_stats_stream)
+        
+        def read_next_stat():
+            try:
+                return next(stats_generator)
+            except StopIteration:
+                return None
+            except Exception as e:
+                logger.error(f"Error reading stats: {e}")
+                return None
+        
+        # Stream stats
+        while True:
+            stats = await loop.run_in_executor(None, read_next_stat)
+            if stats is None:
+                break
             # Calculate CPU usage percentage
             cpu_percent = 0.0
             try:
@@ -454,3 +459,7 @@ async def container_stats_ws(
             })
         except:
             pass
+    finally:
+        # Close DB session if it was opened
+        if db_session:
+            await db_session.__aexit__(None, None, None)
