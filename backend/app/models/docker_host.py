@@ -32,6 +32,7 @@ class DockerHost(Base):
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(255), unique=True, nullable=False)
+    display_name = Column(String(100), nullable=True)  # Short name for UI display
     description = Column(Text, nullable=True)
     host_type = Column(String(50), nullable=False, default=HostType.standalone)
     connection_type = Column(String(50), nullable=False, default=ConnectionType.unix)

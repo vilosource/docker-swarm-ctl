@@ -87,6 +87,7 @@ export interface HostTag {
 export interface DockerHost {
   id: string
   name: string
+  display_name?: string
   description?: string
   host_type: HostType
   connection_type: ConnectionType
@@ -115,6 +116,7 @@ export interface HostCredential {
 
 export interface DockerHostCreate {
   name: string
+  display_name?: string
   description?: string
   host_type: HostType
   connection_type: ConnectionType
@@ -127,6 +129,7 @@ export interface DockerHostCreate {
 
 export interface DockerHostUpdate {
   name?: string
+  display_name?: string
   description?: string
   host_url?: string
   is_active?: boolean

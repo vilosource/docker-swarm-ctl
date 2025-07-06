@@ -15,6 +15,7 @@ export default function EditHostModal({ show, host, onClose, onSuccess }: EditHo
   const { showToast } = useToast()
   const [formData, setFormData] = useState<DockerHostUpdate>({
     name: host.name,
+    display_name: host.display_name,
     description: host.description,
     host_url: host.host_url,
     is_active: host.is_active,
@@ -58,6 +59,19 @@ export default function EditHostModal({ show, host, onClose, onSuccess }: EditHo
                   value={formData.name || ''}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 />
+              </div>
+              
+              <div className="mb-3">
+                <label className="form-label">Display Name</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={formData.display_name || ''}
+                  onChange={(e) => setFormData({ ...formData, display_name: e.target.value })}
+                  placeholder="Short name for navigation menu"
+                  maxLength={100}
+                />
+                <small className="text-muted">Leave empty to auto-truncate hostname</small>
               </div>
               
               <div className="mb-3">

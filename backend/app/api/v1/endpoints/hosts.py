@@ -105,6 +105,7 @@ async def create_host(
     # Create host
     host = DockerHost(
         name=host_data.name,
+        display_name=host_data.display_name,
         description=host_data.description,
         host_type=host_data.host_type,
         connection_type=host_data.connection_type,

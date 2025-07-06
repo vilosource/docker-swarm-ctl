@@ -18,6 +18,7 @@ class HostTagCreate(BaseModel):
 
 class DockerHostCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=255, description="Unique host name")
+    display_name: Optional[str] = Field(None, max_length=100, description="Short display name for UI")
     description: Optional[str] = Field(None, description="Host description")
     host_type: HostType = Field(HostType.standalone, description="Type of Docker host")
     connection_type: ConnectionType = Field(ConnectionType.tcp, description="Connection method")
@@ -41,6 +42,7 @@ class DockerHostCreate(BaseModel):
 
 class DockerHostUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=255)
+    display_name: Optional[str] = Field(None, max_length=100, description="Short display name for UI")
     description: Optional[str] = None
     host_url: Optional[str] = None
     is_active: Optional[bool] = None
@@ -70,6 +72,7 @@ class HostTagResponse(BaseModel):
 class DockerHostResponse(BaseModel):
     id: UUID4
     name: str
+    display_name: Optional[str]
     description: Optional[str]
     host_type: HostType
     connection_type: ConnectionType

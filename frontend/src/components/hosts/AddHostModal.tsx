@@ -14,6 +14,7 @@ export default function AddHostModal({ show, onClose, onSuccess }: AddHostModalP
   const { showToast } = useToast()
   const [formData, setFormData] = useState<DockerHostCreate>({
     name: '',
+    display_name: '',
     description: '',
     host_type: 'standalone',
     connection_type: 'tcp',
@@ -90,8 +91,21 @@ export default function AddHostModal({ show, onClose, onSuccess }: AddHostModalP
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     required
-                    placeholder="e.g., production-docker-1"
+                    placeholder="e.g., docker-1.lab.viloforge.com"
                   />
+                </div>
+                
+                <div className="col-md-6">
+                  <label className="form-label">Display Name</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={formData.display_name || ''}
+                    onChange={(e) => setFormData({ ...formData, display_name: e.target.value })}
+                    placeholder="e.g., Docker 1"
+                    maxLength={100}
+                  />
+                  <small className="text-muted">Short name for navigation menu</small>
                 </div>
                 
                 <div className="col-md-6">

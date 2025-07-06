@@ -60,3 +60,34 @@ export function formatDuration(seconds: number): string {
   
   return remainingHours > 0 ? `${days}d ${remainingHours}h` : `${days}d`
 }
+
+/**
+ * Truncate hostname for display
+ * If the hostname is a FQDN, extract the short hostname
+ * e.g., "docker-1.lab.viloforge.com" -> "docker-1.lab"
+ */
+export function truncateHostname(hostname: string, maxLength = 20): string {
+  if (!hostname) return ''
+  
+  // If hostname is already short enough, return as is
+  if (hostname.length <= maxLength) return hostname
+  
+  // Check if it's a FQDN (contains dots)
+  const parts = hostname.split('.')
+  if (parts.length > 2) {
+    // For FQDN, try to return hostname + first domain part
+    const shortName = `${parts[0]}.${parts[1]}`
+    if (shortName.length <= maxLength) {
+      return shortName
+    }
+    // If still too long, just return the hostname part
+    return parts[0]
+  }
+  
+  // For non-FQDN or if hostname is still too long, truncate with ellipsis
+  if (hostname.length > maxLength) {
+    return hostname.substring(0, maxLength - 3) + '...'
+  }
+  
+  return hostname
+}

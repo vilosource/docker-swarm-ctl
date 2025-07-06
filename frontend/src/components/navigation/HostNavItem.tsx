@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { DockerHost } from '@/types'
+import { truncateHostname } from '@/utils/format'
 
 interface HostNavItemProps {
   host: DockerHost
@@ -65,10 +66,11 @@ export default function HostNavItem({ host }: HostNavItemProps) {
           setIsExpanded(!isExpanded)
         }}
         aria-expanded={isExpanded}
+        title={host.name}
       >
         <i className={getHostIcon()}></i>
         <span>
-          {host.name}
+          {host.display_name || truncateHostname(host.name)}
           <i className={`mdi mdi-circle ${getStatusColor()} font-10 ms-2`} style={{ fontSize: '8px' }}></i>
         </span>
       </a>
