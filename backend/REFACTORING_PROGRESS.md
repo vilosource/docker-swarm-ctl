@@ -103,15 +103,11 @@ This document tracks the progress of backend refactoring to reduce cognitive com
 - **Code Duplication**: Minimal
 - **Test Coverage**: >80%
 
-## Usage Examples
+## Current Status
 
-### Enable Feature Flags
-```bash
-# Enable new features via environment variables
-export FEATURE_USE_CONTAINER_STATS_CALCULATOR=true
-export FEATURE_USE_PERMISSION_SERVICE=true
-export FEATURE_USE_DECORATOR_PATTERN=true
-```
+🎉 **All refactored code is now active by default!** Feature flags are set to `True` and the refactored implementations are in use.
+
+## Usage Examples
 
 ### Using New Decorators
 ```python
