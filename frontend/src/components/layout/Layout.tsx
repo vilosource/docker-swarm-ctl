@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '@/store/authStore'
 import { hostsApi } from '@/api/hosts'
 import HostNavItem from '@/components/navigation/HostNavItem'
+import { useSidebarToggle } from '@/hooks/useSidebarToggle'
 
 const staticNavigation = [
   { 
@@ -33,6 +34,7 @@ export default function Layout() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user, logout } = useAuthStore()
+  const { toggleSidebar } = useSidebarToggle()
   const [expandedSections, setExpandedSections] = useState<string[]>(['all-hosts'])
   
   // Fetch hosts for navigation
@@ -75,79 +77,12 @@ export default function Layout() {
   
   const isAdmin = user?.role === 'admin'
   
-  // Function to show backdrop for mobile
-  const showBackdrop = () => {
-      const existingBackdrop = document.getElementById('custom-backdrop')
-      if (!existingBackdrop) {
-        const backdrop = document.createElement('div')
-        backdrop.id = 'custom-backdrop'
-        backdrop.className = 'offcanvas-backdrop fade show'
-        backdrop.style.zIndex = '1050'
-        document.body.appendChild(backdrop)
-        
-        // Click on backdrop to close menu
-        backdrop.addEventListener('click', () => {
-          document.body.classList.remove('sidebar-enable')
-          hideBackdrop()
-        })
-      }
-  }
-  
-  // Function to hide backdrop
-  const hideBackdrop = () => {
-      const backdrop = document.getElementById('custom-backdrop')
-      if (backdrop) {
-        backdrop.remove()
-      }
-  }
-  
-  // Initialize theme and handle sidebar toggle
+  // Initialize theme
   useEffect(() => {
-    // Add event delegation for button-menu-mobile since React re-renders
-    const handleMenuToggle = (e: MouseEvent) => {
-      const target = e.target as HTMLElement
-      if (target.closest('.button-menu-mobile')) {
-        e.preventDefault()
-        
-        if (window.innerWidth < 992) {
-          // Mobile - toggle sidebar-enable and show/hide backdrop
-          const isSidebarOpen = document.body.classList.contains('sidebar-enable')
-          
-          if (isSidebarOpen) {
-            document.body.classList.remove('sidebar-enable')
-            hideBackdrop()
-          } else {
-            document.body.classList.add('sidebar-enable')
-            showBackdrop()
-          }
-        } else {
-          // Desktop - toggle left-side-menu-condensed
-          document.body.classList.toggle('left-side-menu-condensed')
-        }
-      }
-    }
-    
-    // Handle window resize
-    const handleResize = () => {
-      if (window.innerWidth >= 992) {
-        // Remove mobile-specific classes on desktop
-        document.body.classList.remove('sidebar-enable')
-        hideBackdrop()
-      }
-    }
-    
-    document.addEventListener('click', handleMenuToggle)
-    window.addEventListener('resize', handleResize)
     
     // Initialize theme if app.js is loaded
     if (window.$ && window.App) {
       window.App.init()
-    }
-    
-    return () => {
-      document.removeEventListener('click', handleMenuToggle)
-      window.removeEventListener('resize', handleResize)
-      hideBackdrop() // Clean up backdrop on unmount
     }
   }, [])
   
@@ -237,25 +172,7 @@ export default function Layout() {
               <button 
                 className="button-menu-mobile waves-effect waves-light"
                 type="button"
-                onClick={(e) => {
-                  e.preventDefault()
-                  
-                  if (window.innerWidth < 992) {
-                    // Mobile - toggle sidebar-enable and show/hide backdrop
-                    const isSidebarOpen = document.body.classList.contains('sidebar-enable')
-                    
-                    if (isSidebarOpen) {
-                      document.body.classList.remove('sidebar-enable')
-                      hideBackdrop()
-                    } else {
-                      document.body.classList.add('sidebar-enable')
-                      showBackdrop()
-                    }
-                  } else {
-                    // Desktop - toggle left-side-menu-condensed
-                    document.body.classList.toggle('left-side-menu-condensed')
-                  }
-                }}
+                onClick={toggleSidebar}
               >
                 <i className="fe-menu"></i>
               </button>
@@ -270,6 +187,19 @@ export default function Layout() {
       {/* ========== Left Sidebar Start ========== */}
       <div className="left-side-menu">
         <div className="h-100" data-simplebar>
+          {/* Logo box */}
+          <div className="logo-box">
+            <Link to="/" className="logo logo-light text-center">
+              <span className="logo-sm">
+                <i className="mdi mdi-docker" style={{ fontSize: '24px' }}></i>
+              </span>
+              <span className="logo-lg">
+                <i className="mdi mdi-docker me-2" style={{ fontSize: '24px' }}></i>
+                <span style={{ fontSize: '18px', fontWeight: 'bold' }}>Docker CTL</span>
+              </span>
+            </Link>
+          </div>
+          
           {/* User box */}
           <div className="user-box text-center">
             <div className="dropdown">
