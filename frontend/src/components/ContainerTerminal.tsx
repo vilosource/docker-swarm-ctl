@@ -9,12 +9,14 @@ interface ContainerTerminalProps {
   containerId: string
   command?: string
   workdir?: string
+  hostId?: string
 }
 
 export const ContainerTerminal: React.FC<ContainerTerminalProps> = ({ 
   containerId, 
   command,
-  workdir = '/'
+  workdir = '/',
+  hostId
 }) => {
   const terminalRef = useRef<HTMLDivElement>(null)
   const terminalInstanceRef = useRef<Terminal | null>(null)
@@ -83,6 +85,9 @@ export const ContainerTerminal: React.FC<ContainerTerminalProps> = ({
         wsUrl += `&cmd=${encodeURIComponent(command)}`
       }
       wsUrl += `&workdir=${encodeURIComponent(workdir)}`
+      if (hostId) {
+        wsUrl += `&host_id=${hostId}`
+      }
       const ws = new WebSocket(wsUrl)
     
     ws.onopen = () => {

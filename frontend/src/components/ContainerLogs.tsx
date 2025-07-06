@@ -3,9 +3,10 @@ import { useContainerLogs } from '../hooks/useContainerLogs'
 
 interface ContainerLogsProps {
   containerId: string
+  hostId?: string
 }
 
-export const ContainerLogs: React.FC<ContainerLogsProps> = ({ containerId }) => {
+export const ContainerLogs: React.FC<ContainerLogsProps> = ({ containerId, hostId }) => {
   const [follow, setFollow] = useState(true)
   const [displayTail, setDisplayTail] = useState(100)
   const [initialTail] = useState(100) // Only used for initial connection
@@ -21,7 +22,7 @@ export const ContainerLogs: React.FC<ContainerLogsProps> = ({ containerId }) => 
     clearLogs,
     reconnect,
     logsEndRef,
-  } = useContainerLogs(containerId, { follow, tail: initialTail })
+  } = useContainerLogs(containerId, { follow, tail: initialTail, hostId })
 
   // Filter logs based on search term and display tail
   const filteredLogs = useMemo(() => {

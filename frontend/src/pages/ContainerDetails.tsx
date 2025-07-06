@@ -8,15 +8,15 @@ import ContainerEnvironment from '@/components/ContainerEnvironment'
 import PageTitle from '@/components/common/PageTitle'
 
 export default function ContainerDetails() {
-  const { id } = useParams<{ id: string }>()
+  const { id, hostId } = useParams<{ id: string; hostId?: string }>()
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('logs')
 
   const { data: container, isLoading, error } = useQuery({
-    queryKey: ['container', id],
+    queryKey: ['container', id, hostId],
     queryFn: async () => {
       if (!id) throw new Error('Container ID is required')
-      const response = await containersApi.get(id)
+      const response = await containersApi.get(id, hostId)
       return response.data
     },
     enabled: !!id,
@@ -38,7 +38,7 @@ export default function ContainerDetails() {
         <div className="alert alert-danger" role="alert">
           {error ? error.message : 'Container not found'}
         </div>
-        <button className="btn btn-secondary" onClick={() => navigate('/containers')}>
+        <button className="btn btn-secondary" onClick={() => navigate(hostId ? `/hosts/${hostId}/containers` : '/containers')}>
           <i className="mdi mdi-arrow-left me-2"></i>Back to Containers
         </button>
       </div>
@@ -173,11 +173,11 @@ export default function ContainerDetails() {
               </ul>
             </div>
             <div className="card-body p-0" style={{ height: 'calc(100vh - 320px)', minHeight: '400px' }}>
-              {activeTab === 'logs' && <ContainerLogs containerId={container.id} />}
+              {activeTab === 'logs' && <ContainerLogs containerId={container.id} hostId={hostId} />}
               {activeTab === 'terminal' && (
                 <div className="h-100">
                   {isRunning ? (
-                    <ContainerTerminal containerId={container.id} />
+                    <ContainerTerminal containerId={container.id} hostId={hostId} />
                   ) : (
                     <div className="d-flex align-items-center justify-content-center h-100 text-muted">
                       <div className="text-center">
@@ -190,7 +190,7 @@ export default function ContainerDetails() {
               )}
               {activeTab === 'environment' && (
                 <div className="p-3">
-                  <ContainerEnvironment containerId={container.id} />
+                  <ContainerEnvironment containerId={container.id} hostId={hostId} />
                 </div>
               )}
             </div>

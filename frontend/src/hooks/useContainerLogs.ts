@@ -15,6 +15,7 @@ export interface UseContainerLogsOptions {
   tail?: number;
   timestamps?: boolean;
   since?: string;
+  hostId?: string;
 }
 
 export function useContainerLogs(
@@ -30,12 +31,13 @@ export function useContainerLogs(
     follow = true,
     tail = 100,
     timestamps = true,
-    since
+    since,
+    hostId
   } = options;
 
   // Build WebSocket URL with query parameters
   const wsUrl = containerId && token
-    ? `${import.meta.env.VITE_WS_URL}/containers/${containerId}/logs?token=${token}&follow=${follow}&tail=${tail}&timestamps=${timestamps}${since ? `&since=${since}` : ''}`
+    ? `${import.meta.env.VITE_WS_URL}/containers/${containerId}/logs?token=${token}&follow=${follow}&tail=${tail}&timestamps=${timestamps}${since ? `&since=${since}` : ''}${hostId ? `&host_id=${hostId}` : ''}`
     : null;
   
   // Debug logging

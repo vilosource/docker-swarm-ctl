@@ -4,12 +4,13 @@ import { containersApi } from '@/api/containers'
 
 interface ContainerEnvironmentProps {
   containerId: string
+  hostId?: string
 }
 
-const ContainerEnvironment: React.FC<ContainerEnvironmentProps> = ({ containerId }) => {
+const ContainerEnvironment: React.FC<ContainerEnvironmentProps> = ({ containerId, hostId }) => {
   const { data, isLoading, error } = useQuery({
-    queryKey: ['container-inspect', containerId],
-    queryFn: () => containersApi.inspect(containerId),
+    queryKey: ['container-inspect', containerId, hostId],
+    queryFn: () => containersApi.inspect(containerId, hostId),
     select: (response) => response.data
   })
 

@@ -136,6 +136,7 @@ export default function HostContainers() {
                 onStop={handleStop}
                 onRemove={handleRemove}
                 canManage={canManageContainers}
+                hostId={hostId}
               />
             </div>
           </div>

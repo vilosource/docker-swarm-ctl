@@ -11,6 +11,7 @@ interface ContainerListProps {
   onRemove: (container: Container) => void
   canManage: boolean
   showHost?: boolean
+  hostId?: string
 }
 
 export default function ContainerList({
@@ -20,6 +21,7 @@ export default function ContainerList({
   onRemove,
   canManage,
   showHost = false,
+  hostId,
 }: ContainerListProps) {
   const tableRef = useRef<HTMLDivElement>(null)
   
@@ -75,7 +77,17 @@ export default function ContainerList({
             <tr key={container.id}>
               <td>
                 <h5 className="font-14 mb-0">
-                  <Link to={`/containers/${container.id}`} className="text-dark">{container.name}</Link>
+                  <Link 
+                    to={hostId 
+                      ? `/hosts/${hostId}/containers/${container.id}` 
+                      : container.host_id 
+                        ? `/hosts/${container.host_id}/containers/${container.id}`
+                        : `/containers/${container.id}`
+                    } 
+                    className="text-dark"
+                  >
+                    {container.name}
+                  </Link>
                 </h5>
               </td>
               {showHost && (
@@ -135,7 +147,12 @@ export default function ContainerList({
                 <td>
                   <div className="btn-group btn-group-sm" role="group">
                     <Link
-                      to={`/containers/${container.id}`}
+                      to={hostId 
+                        ? `/hosts/${hostId}/containers/${container.id}` 
+                        : container.host_id 
+                          ? `/hosts/${container.host_id}/containers/${container.id}`
+                          : `/containers/${container.id}`
+                      }
                       className="btn btn-light"
                       data-bs-toggle="tooltip"
                       title="View Details & Logs"

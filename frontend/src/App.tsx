@@ -28,6 +28,7 @@ function App() {
           <Route path="/system-stats" element={<SystemStats />} />
           <Route path="/containers" element={<Containers />} />
           <Route path="/containers/:id" element={<ContainerDetails />} />
+          <Route path="/hosts/:hostId/containers/:id" element={<ContainerDetails />} />
           <Route path="/images" element={<Images />} />
           <Route path="/users" element={<Users />} />
           <Route path="/hosts" element={<Hosts />} />
