@@ -37,6 +37,10 @@ class SelfMonitoringFilter(logging.Filter):
         # Filter out our own WebSocket connection logs (already handled in the code)
         if "WebSocket connected:" in record.getMessage() or "WebSocket disconnected:" in record.getMessage():
             return False
+        
+        # Filter out WebSocket error logs to prevent feedback loops
+        if record.name == "app.api.v1.websocket.base" and "Error sending WebSocket message" in record.getMessage():
+            return False
             
         # Allow all other logs
         return True

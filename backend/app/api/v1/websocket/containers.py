@@ -126,6 +126,10 @@ async def log_reader(container_id: str, follow: bool, tail: int) -> AsyncGenerat
                     # Decode and clean the log line
                     log_line = line.decode('utf-8').strip()
                     if log_line:
+                        # Skip logs that appear to be corrupted with excessive backslashes
+                        # This prevents feedback loops from error messages
+                        if log_line.count('\\') > 100:
+                            continue
                         # Store in buffer
                         if container_id in log_buffers:
                             log_buffers[container_id].append(log_line)

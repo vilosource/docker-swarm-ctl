@@ -75,7 +75,10 @@ class ConnectionManager:
         try:
             await websocket.send_json(message)
         except Exception as e:
-            logger.error(f"Error sending to WebSocket: {str(e)} - Message: {message}")
+            # Don't log the full message content to avoid feedback loops
+            message_type = message.get('type', 'unknown')
+            container_id = message.get('container_id', 'unknown')
+            logger.error(f"Error sending WebSocket message (type: {message_type}, container: {container_id}): {str(e)}")
     
     async def broadcast_to_container(self, container_id: str, message: dict):
         """Broadcast message to all connections watching a container."""
