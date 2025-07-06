@@ -19,16 +19,17 @@
   min-height: auto !important;
 }
 
-/* Reduce padding on submenu items */
-#sidebar-menu .nav-second-level > li > a,
-#sidebar-menu ul ul li a,
-.left-side-menu #sidebar-menu ul ul li a {
-  padding: 8px 15px 8px 25px !important;
+/* Reduce padding on submenu items - more specific selectors */
+#side-menu .nav-second-level > li > a,
+#side-menu ul.nav-second-level li a,
+.nav-second-level li a {
+  padding: 8px 15px 8px 20px !important;
   min-height: auto !important;
 }
 
 /* Reduce margin between menu items */
-#sidebar-menu > ul > li {
+#sidebar-menu > ul > li,
+#side-menu > li {
   margin: 0 !important;
 }
 
@@ -95,12 +96,12 @@
   width: 20px !important;
 }
 
-#sidebar-menu .nav-second-level > li > a > i,
-#sidebar-menu ul ul li a > i,
-.left-side-menu #sidebar-menu ul ul li a > i {
+#side-menu .nav-second-level > li > a > i,
+.nav-second-level li a i {
   font-size: 13px !important;
   width: 14px !important;
   margin-right: 6px !important;
+  display: inline-block !important;
 }
 
 /* Condensed mode adjustments */
@@ -121,11 +122,12 @@ html[data-sidebar-size=condensed] .left-side-menu #sidebar-menu > ul > li > a {
 
 /* Override MetisMenu default styles */
 .metismenu .nav-second-level li a,
-.metismenu ul ul li a {
-  padding-left: 25px !important;
+.nav-second-level.mm-show li a,
+.nav-second-level.mm-collapse li a {
+  padding-left: 20px !important;
 }
 
-/* Ensure all nested lists have proper spacing */
-#side-menu ul li ul li a {
-  padding-left: 25px !important;
+/* Force all submenu items to have consistent padding */
+ul.nav-second-level > li > a {
+  padding-left: 20px !important;
 }
