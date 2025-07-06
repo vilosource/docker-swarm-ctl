@@ -20,7 +20,9 @@
 }
 
 /* Reduce padding on submenu items */
-#sidebar-menu .nav-second-level > li > a {
+#sidebar-menu .nav-second-level > li > a,
+#sidebar-menu ul ul li a,
+.left-side-menu #sidebar-menu ul ul li a {
   padding: 8px 15px 8px 25px !important;
   min-height: auto !important;
 }
@@ -93,7 +95,9 @@
   width: 20px !important;
 }
 
-#sidebar-menu .nav-second-level > li > a > i {
+#sidebar-menu .nav-second-level > li > a > i,
+#sidebar-menu ul ul li a > i,
+.left-side-menu #sidebar-menu ul ul li a > i {
   font-size: 13px !important;
   width: 14px !important;
   margin-right: 6px !important;
@@ -113,4 +117,15 @@ html[data-sidebar-size=condensed] .left-side-menu #sidebar-menu > ul > li > a {
 /* Host status indicator adjustment */
 #sidebar-menu .mdi-circle {
   vertical-align: middle !important;
+}
+
+/* Override MetisMenu default styles */
+.metismenu .nav-second-level li a,
+.metismenu ul ul li a {
+  padding-left: 25px !important;
+}
+
+/* Ensure all nested lists have proper spacing */
+#side-menu ul li ul li a {
+  padding-left: 25px !important;
 }
