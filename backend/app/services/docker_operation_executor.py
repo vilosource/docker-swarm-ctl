@@ -65,7 +65,7 @@ class MultiHostAdapter(DockerClientAdapter):
         """Get Docker client for specified or default host"""
         if not host_id:
             # Get default host for user
-            host_id = await self._connection_manager.get_default_host_id(self._user, self._db)
+            host_id = await self._connection_manager.get_default_host_id(self._db, self._user)
             if not host_id:
                 raise DockerConnectionError("No accessible Docker hosts found")
         

@@ -1,31 +1,26 @@
 """
-Docker Service Abstraction Layer
+Refactored Docker Service
 
-This module provides a unified interface for Docker operations across single and multiple hosts.
-It follows SOLID principles and provides backward compatibility for single-host deployments.
+Uses the unified DockerOperationExecutor to eliminate code duplication
+between single and multi-host implementations.
 """
 
-from typing import List, Optional, Dict, Any, Protocol
-from abc import ABC, abstractmethod
-from uuid import UUID
-import json
-import asyncio
-from docker.client import DockerClient
-from docker.models.containers import Container
-from docker.models.images import Image
-from docker.errors import DockerException, APIError
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.core.exceptions import DockerConnectionError, DockerOperationError, AuthorizationError
-from app.models import User, DockerHost
-from app.services.docker_connection_manager import DockerConnectionManager, get_docker_connection_manager
+from typing import List, Optional, Dict, Any
+from app.services.docker_operation_executor import (
+    DockerOperationExecutor,
+    SingleHostAdapter,
+    MultiHostAdapter,
+    DockerClientAdapter
+)
 from app.services.docker_client import get_docker_client
-from app.core.logging import logger
+from app.services.docker_connection_manager import get_docker_connection_manager
+from app.models import User
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class ContainerData:
     """Data class for container information"""
-    def __init__(self, container: Container, host_id: Optional[str] = None):
+    def __init__(self, container, host_id: Optional[str] = None):
         self.container = container
         self.host_id = host_id
         
@@ -63,8 +58,16 @@ class ContainerData:
         return self.container.labels or {}
 
 
-class IDockerService(Protocol):
-    """Interface for Docker operations"""
+class UnifiedDockerService:
+    """
+    Unified Docker service that works for both single and multi-host deployments
+    
+    This replaces both SingleHostDockerService and MultiHostDockerService
+    with a single implementation using the Adapter pattern.
+    """
+    
+    def __init__(self, executor: DockerOperationExecutor):
+        self._executor = executor
     
     async def list_containers(
         self,
@@ -72,97 +75,9 @@ class IDockerService(Protocol):
         filters: Optional[Dict[str, Any]] = None,
         host_id: Optional[str] = None
     ) -> List[ContainerData]:
-        ...
-    
-    async def get_container(
-        self,
-        container_id: str,
-        host_id: Optional[str] = None
-    ) -> ContainerData:
-        ...
-    
-    async def create_container(
-        self,
-        config: Dict[str, Any],
-        host_id: Optional[str] = None
-    ) -> ContainerData:
-        ...
-    
-    async def start_container(
-        self,
-        container_id: str,
-        host_id: Optional[str] = None
-    ) -> None:
-        ...
-    
-    async def stop_container(
-        self,
-        container_id: str,
-        timeout: int = 10,
-        host_id: Optional[str] = None
-    ) -> None:
-        ...
-    
-    async def restart_container(
-        self,
-        container_id: str,
-        timeout: int = 10,
-        host_id: Optional[str] = None
-    ) -> None:
-        ...
-    
-    async def remove_container(
-        self,
-        container_id: str,
-        force: bool = False,
-        volumes: bool = False,
-        host_id: Optional[str] = None
-    ) -> None:
-        ...
-    
-    async def get_container_logs(
-        self,
-        container_id: str,
-        lines: int = 100,
-        timestamps: bool = False,
-        host_id: Optional[str] = None
-    ) -> str:
-        ...
-    
-    async def get_container_stats(
-        self,
-        container_id: str,
-        host_id: Optional[str] = None
-    ) -> Dict[str, Any]:
-        ...
-    
-    async def inspect_container(
-        self,
-        container_id: str,
-        host_id: Optional[str] = None
-    ) -> Dict[str, Any]:
-        ...
-
-
-class SingleHostDockerService:
-    """Docker service implementation for single-host deployments (backward compatible)"""
-    
-    def __init__(self):
-        self._client = get_docker_client()
-    
-    async def list_containers(
-        self,
-        all: bool = False,
-        filters: Optional[Dict[str, Any]] = None,
-        host_id: Optional[str] = None
-    ) -> List[ContainerData]:
-        """List containers from the local Docker daemon"""
-        kwargs = {"all": all}
-        if filters:
-            kwargs["filters"] = filters
-        
-        containers = self._client.containers.list(**kwargs)
-        return [ContainerData(c) for c in containers]
+        """List containers from the specified or default host"""
+        container_tuples = await self._executor.list_containers(all, filters, host_id)
+        return [ContainerData(container, host_id) for container, host_id in container_tuples]
     
     async def get_container(
         self,
@@ -170,11 +85,8 @@ class SingleHostDockerService:
         host_id: Optional[str] = None
     ) -> ContainerData:
         """Get a specific container"""
-        try:
-            container = self._client.containers.get(container_id)
-            return ContainerData(container)
-        except Exception as e:
-            raise DockerOperationError("get_container", f"Container {container_id} not found")
+        container, resolved_host_id = await self._executor.get_container(container_id, host_id)
+        return ContainerData(container, resolved_host_id)
     
     async def create_container(
         self,
@@ -182,11 +94,8 @@ class SingleHostDockerService:
         host_id: Optional[str] = None
     ) -> ContainerData:
         """Create a new container"""
-        try:
-            container = self._client.containers.run(**config)
-            return ContainerData(container)
-        except Exception as e:
-            raise DockerOperationError("create_container", str(e))
+        container, resolved_host_id = await self._executor.create_container(config, host_id)
+        return ContainerData(container, resolved_host_id)
     
     async def start_container(
         self,
@@ -194,11 +103,7 @@ class SingleHostDockerService:
         host_id: Optional[str] = None
     ) -> None:
         """Start a container"""
-        try:
-            container = self._client.containers.get(container_id)
-            container.start()
-        except Exception as e:
-            raise DockerOperationError("start_container", str(e))
+        await self._executor.start_container(container_id, host_id)
     
     async def stop_container(
         self,
@@ -207,11 +112,7 @@ class SingleHostDockerService:
         host_id: Optional[str] = None
     ) -> None:
         """Stop a container"""
-        try:
-            container = self._client.containers.get(container_id)
-            container.stop(timeout=timeout)
-        except Exception as e:
-            raise DockerOperationError("stop_container", str(e))
+        await self._executor.stop_container(container_id, timeout, host_id)
     
     async def restart_container(
         self,
@@ -220,11 +121,7 @@ class SingleHostDockerService:
         host_id: Optional[str] = None
     ) -> None:
         """Restart a container"""
-        try:
-            container = self._client.containers.get(container_id)
-            container.restart(timeout=timeout)
-        except Exception as e:
-            raise DockerOperationError("restart_container", str(e))
+        await self._executor.restart_container(container_id, timeout, host_id)
     
     async def remove_container(
         self,
@@ -234,11 +131,7 @@ class SingleHostDockerService:
         host_id: Optional[str] = None
     ) -> None:
         """Remove a container"""
-        try:
-            container = self._client.containers.get(container_id)
-            container.remove(force=force, v=volumes)
-        except Exception as e:
-            raise DockerOperationError("remove_container", str(e))
+        await self._executor.remove_container(container_id, force, volumes, host_id)
     
     async def get_container_logs(
         self,
@@ -248,24 +141,15 @@ class SingleHostDockerService:
         host_id: Optional[str] = None
     ) -> str:
         """Get container logs"""
-        try:
-            container = self._client.containers.get(container_id)
-            logs = container.logs(tail=lines, timestamps=timestamps, stream=False)
-            return logs.decode("utf-8")
-        except Exception as e:
-            raise DockerOperationError("get_container_logs", str(e))
+        return await self._executor.get_container_logs(container_id, lines, timestamps, host_id)
     
     async def get_container_stats(
         self,
         container_id: str,
         host_id: Optional[str] = None
     ) -> Dict[str, Any]:
-        """Get container stats"""
-        try:
-            container = self._client.containers.get(container_id)
-            return container.stats(stream=False)
-        except Exception as e:
-            raise DockerOperationError("get_container_stats", str(e))
+        """Get container statistics"""
+        return await self._executor.get_container_stats(container_id, False, host_id)
     
     async def inspect_container(
         self,
@@ -273,219 +157,59 @@ class SingleHostDockerService:
         host_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """Inspect a container"""
-        try:
-            container = self._client.containers.get(container_id)
-            return container.attrs
-        except Exception as e:
-            raise DockerOperationError("inspect_container", str(e))
-
-
-class MultiHostDockerService:
-    """Docker service implementation for multi-host deployments"""
-    
-    def __init__(
-        self,
-        connection_manager: DockerConnectionManager,
-        user: User,
-        db: AsyncSession
-    ):
-        self._connection_manager = connection_manager
-        self._user = user
-        self._db = db
-    
-    async def _get_client(self, host_id: Optional[str] = None) -> tuple[DockerClient, str]:
-        """Get Docker client for the specified host or default host"""
-        if not host_id:
-            # Get default host for user
-            host_id = await self._connection_manager.get_default_host_id(self._db, self._user)
-            if not host_id:
-                raise DockerConnectionError("No accessible Docker hosts found")
-        
-        client = await self._connection_manager.get_client(host_id, self._user, self._db)
-        return client, host_id
-    
-    async def list_containers(
-        self,
-        all: bool = False,
-        filters: Optional[Dict[str, Any]] = None,
-        host_id: Optional[str] = None
-    ) -> List[ContainerData]:
-        """List containers from specified or default host"""
-        client, resolved_host_id = await self._get_client(host_id)
-        
-        kwargs = {"all": all}
-        if filters:
-            kwargs["filters"] = filters
-        
-        containers = client.containers.list(**kwargs)
-        return [ContainerData(c, resolved_host_id) for c in containers]
-    
-    async def get_container(
-        self,
-        container_id: str,
-        host_id: Optional[str] = None
-    ) -> ContainerData:
-        """Get a specific container"""
-        client, resolved_host_id = await self._get_client(host_id)
-        
-        try:
-            container = client.containers.get(container_id)
-            return ContainerData(container, resolved_host_id)
-        except Exception as e:
-            raise DockerOperationError("get_container", f"Container {container_id} not found")
-    
-    async def create_container(
-        self,
-        config: Dict[str, Any],
-        host_id: Optional[str] = None
-    ) -> ContainerData:
-        """Create a new container"""
-        client, resolved_host_id = await self._get_client(host_id)
-        
-        try:
-            container = client.containers.run(**config)
-            return ContainerData(container, resolved_host_id)
-        except Exception as e:
-            raise DockerOperationError("create_container", str(e))
-    
-    async def start_container(
-        self,
-        container_id: str,
-        host_id: Optional[str] = None
-    ) -> None:
-        """Start a container"""
-        client, resolved_host_id = await self._get_client(host_id)
-        
-        try:
-            container = client.containers.get(container_id)
-            container.start()
-        except Exception as e:
-            raise DockerOperationError("start_container", str(e))
-    
-    async def stop_container(
-        self,
-        container_id: str,
-        timeout: int = 10,
-        host_id: Optional[str] = None
-    ) -> None:
-        """Stop a container"""
-        client, resolved_host_id = await self._get_client(host_id)
-        
-        try:
-            container = client.containers.get(container_id)
-            container.stop(timeout=timeout)
-        except Exception as e:
-            raise DockerOperationError("stop_container", str(e))
-    
-    async def restart_container(
-        self,
-        container_id: str,
-        timeout: int = 10,
-        host_id: Optional[str] = None
-    ) -> None:
-        """Restart a container"""
-        client, resolved_host_id = await self._get_client(host_id)
-        
-        try:
-            container = client.containers.get(container_id)
-            container.restart(timeout=timeout)
-        except Exception as e:
-            raise DockerOperationError("restart_container", str(e))
-    
-    async def remove_container(
-        self,
-        container_id: str,
-        force: bool = False,
-        volumes: bool = False,
-        host_id: Optional[str] = None
-    ) -> None:
-        """Remove a container"""
-        client, resolved_host_id = await self._get_client(host_id)
-        
-        try:
-            container = client.containers.get(container_id)
-            container.remove(force=force, v=volumes)
-        except Exception as e:
-            raise DockerOperationError("remove_container", str(e))
-    
-    async def get_container_logs(
-        self,
-        container_id: str,
-        lines: int = 100,
-        timestamps: bool = False,
-        host_id: Optional[str] = None
-    ) -> str:
-        """Get container logs"""
-        client, resolved_host_id = await self._get_client(host_id)
-        
-        try:
-            container = client.containers.get(container_id)
-            logs = container.logs(tail=lines, timestamps=timestamps, stream=False)
-            return logs.decode("utf-8")
-        except Exception as e:
-            raise DockerOperationError("get_container_logs", str(e))
-    
-    async def get_container_stats(
-        self,
-        container_id: str,
-        host_id: Optional[str] = None
-    ) -> Dict[str, Any]:
-        """Get container stats"""
-        client, resolved_host_id = await self._get_client(host_id)
-        
-        try:
-            container = client.containers.get(container_id)
-            return container.stats(stream=False)
-        except Exception as e:
-            raise DockerOperationError("get_container_stats", str(e))
-    
-    async def inspect_container(
-        self,
-        container_id: str,
-        host_id: Optional[str] = None
-    ) -> Dict[str, Any]:
-        """Inspect a container"""
-        client, resolved_host_id = await self._get_client(host_id)
-        
-        try:
-            container = client.containers.get(container_id)
-            return container.attrs
-        except Exception as e:
-            raise DockerOperationError("inspect_container", str(e))
+        return await self._executor.inspect_container(container_id, host_id)
 
 
 class DockerServiceFactory:
-    """Factory for creating appropriate Docker service implementation"""
+    """
+    Factory for creating Docker service instances
+    
+    Now creates UnifiedDockerService with appropriate adapter
+    """
+    
+    @staticmethod
+    def create_for_single_host() -> UnifiedDockerService:
+        """Create service for single-host deployment"""
+        docker_client = get_docker_client()
+        adapter = SingleHostAdapter(docker_client)
+        executor = DockerOperationExecutor(adapter)
+        return UnifiedDockerService(executor)
+    
+    @staticmethod
+    def create_for_multi_host(
+        user: User,
+        db: AsyncSession
+    ) -> UnifiedDockerService:
+        """Create service for multi-host deployment"""
+        connection_manager = get_docker_connection_manager()
+        adapter = MultiHostAdapter(connection_manager, user, db)
+        executor = DockerOperationExecutor(adapter)
+        return UnifiedDockerService(executor)
     
     @staticmethod
     def create(
         user: Optional[User] = None,
         db: Optional[AsyncSession] = None,
-        multi_host_enabled: bool = True
-    ) -> IDockerService:
+        multi_host: bool = True
+    ) -> UnifiedDockerService:
         """
-        Create Docker service instance based on configuration
+        Create appropriate Docker service based on deployment type
         
         Args:
             user: Current user (required for multi-host)
             db: Database session (required for multi-host)
-            multi_host_enabled: Whether multi-host support is enabled
+            multi_host: Whether to use multi-host implementation
             
         Returns:
-            Appropriate Docker service implementation
+            UnifiedDockerService instance
         """
-        if multi_host_enabled and user and db:
-            connection_manager = get_docker_connection_manager()
-            return MultiHostDockerService(connection_manager, user, db)
+        if multi_host and user and db:
+            return DockerServiceFactory.create_for_multi_host(user, db)
         else:
-            return SingleHostDockerService()
+            return DockerServiceFactory.create_for_single_host()
 
 
-# Dependency injection helper
-async def get_docker_service(
-    user: User,
-    db: AsyncSession,
-    multi_host_enabled: bool = True
-) -> IDockerService:
-    """Get Docker service instance for dependency injection"""
-    return DockerServiceFactory.create(user, db, multi_host_enabled)
+# For backward compatibility, keep the same interface names
+IDockerService = UnifiedDockerService
+SingleHostDockerService = UnifiedDockerService  # They're now the same
+MultiHostDockerService = UnifiedDockerService   # They're now the same
