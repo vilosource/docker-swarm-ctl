@@ -8,6 +8,7 @@ from app.services.docker_client import get_docker_client
 from app.services.audit import AuditService
 from app.models.user import User
 from app.core.feature_flags import get_all_feature_flags
+from app.services.circuit_breaker import get_circuit_breaker_manager
 
 
 router = APIRouter()
@@ -25,6 +26,26 @@ async def get_feature_flags(
 ):
     """Get current feature flags status (admin only)"""
     return get_all_feature_flags()
+
+
+@router.get("/circuit-breakers")
+async def get_circuit_breakers(
+    current_user: User = Depends(require_admin)
+):
+    """Get circuit breaker status for all hosts (admin only)"""
+    manager = get_circuit_breaker_manager()
+    return manager.get_all_status()
+
+
+@router.post("/circuit-breakers/{breaker_name}/reset")
+async def reset_circuit_breaker(
+    breaker_name: str,
+    current_user: User = Depends(require_admin)
+):
+    """Reset a specific circuit breaker (admin only)"""
+    manager = get_circuit_breaker_manager()
+    await manager.reset(breaker_name)
+    return {"message": f"Circuit breaker '{breaker_name}' has been reset"}
 
 
 @router.get("/info")

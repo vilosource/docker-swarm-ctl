@@ -11,6 +11,7 @@ from app.core.exceptions import DockerConnectionError, AuthorizationError
 from app.models import DockerHost, UserHostPermission, User, UserRole, HostCredential
 from app.services.encryption import get_encryption_service
 from app.core.logging import logger
+from app.services.circuit_breaker import get_circuit_breaker_manager, CircuitBreakerConfig
 
 
 class DockerConnectionManager:
@@ -49,17 +50,32 @@ class DockerConnectionManager:
         # Check user permissions
         await self._check_permissions(host_id, user, db)
         
-        # Get or create connection
-        if host_id not in self._connections:
-            async with self._lock:
-                if host_id not in self._connections:
-                    await self._create_connection(host_id, db)
+        # Use circuit breaker for connection operations
+        circuit_breaker = get_circuit_breaker_manager().get_or_create(
+            f"docker-host-{host_id}",
+            CircuitBreakerConfig(
+                failure_threshold=3,
+                recovery_timeout=30,
+                expected_exception=DockerConnectionError,
+                success_threshold=2
+            )
+        )
         
-        # Check if connection needs health check
-        if await self._needs_health_check(host_id):
-            await self._perform_health_check(host_id)
+        async def _get_connection():
+            # Get or create connection
+            if host_id not in self._connections:
+                async with self._lock:
+                    if host_id not in self._connections:
+                        await self._create_connection(host_id, db)
+            
+            # Check if connection needs health check
+            if await self._needs_health_check(host_id):
+                await self._perform_health_check(host_id)
+            
+            return self._connections[host_id]
         
-        return self._connections[host_id]
+        # Execute through circuit breaker
+        return await circuit_breaker.call(_get_connection)
     
     async def _check_permissions(
         self,
