@@ -282,21 +282,21 @@ async def container_logs_ws(
                 # Only log if not self-monitoring
                 if not is_self_monitoring(container_id, docker):
                     logger.info(f"Log stream ended for container {container_id}, sent {log_count} lines")
-        else:
-            # Just wait for broadcasts from the existing stream
-            # Use a more efficient wait mechanism
-            try:
-                while True:
-                    # Wait for a longer period to reduce CPU usage
-                    await asyncio.sleep(30)
-                    # Send a ping less frequently
-                    try:
-                        await websocket.send_json({"type": "ping"})
-                    except:
-                        break
-            except asyncio.CancelledError:
-                # Handle graceful shutdown
-                pass
+            else:
+                # Just wait for broadcasts from the existing stream
+                # Use a more efficient wait mechanism
+                try:
+                    while True:
+                        # Wait for a longer period to reduce CPU usage
+                        await asyncio.sleep(30)
+                        # Send a ping less frequently
+                        try:
+                            await websocket.send_json({"type": "ping"})
+                        except:
+                            break
+                except asyncio.CancelledError:
+                    # Handle graceful shutdown
+                    pass
     
     except WebSocketDisconnect:
         # Only log if not self-monitoring
