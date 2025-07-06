@@ -8,7 +8,9 @@ The lab uses two network interfaces:
 - **eth0 (192.168.100.0/24)**: Internal lab network for Docker API communication
 - **eth1**: External network for internet access and management
 
-Docker is configured to listen on the **eth0** interface for security and network isolation.
+Docker is configured to listen on:
+- **Unix socket** (`/var/run/docker.sock`): For local access by users on the host
+- **TCP on eth0** (`192.168.100.x:2375`): For remote API access from the control platform
 
 ## Inventory
 
@@ -77,17 +79,24 @@ After running the playbooks, you can add the hosts to the Docker Control Platfor
 
 ## Troubleshooting
 
-1. Check Docker is listening on the correct interface:
+1. Check Docker is listening on both socket and TCP:
    ```bash
    sudo ss -tlnp | grep docker
+   # Should show both unix socket and tcp:2375
    ```
 
-2. Test connectivity from the control platform host:
+2. Test local socket access:
+   ```bash
+   docker ps  # Should work without setting DOCKER_HOST
+   ```
+
+3. Test TCP connectivity from the control platform host:
    ```bash
    nc -zv 192.168.100.11 2375
+   curl http://192.168.100.11:2375/version
    ```
 
-3. Check Docker logs:
+4. Check Docker logs:
    ```bash
    sudo journalctl -u docker -f
    ```

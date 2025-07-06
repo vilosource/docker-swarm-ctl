@@ -53,12 +53,12 @@
       register: eth0_ip
       changed_when: false
 
-    - name: Configure Docker to listen on TCP
+    - name: Configure Docker to listen on both socket and TCP
       copy:
         content: |
           [Service]
           ExecStart=
-          ExecStart=/usr/bin/dockerd -H fd:// -H tcp://{{ eth0_ip.stdout }}:2375
+          ExecStart=/usr/bin/dockerd -H fd:// -H unix:///var/run/docker.sock -H tcp://{{ eth0_ip.stdout }}:2375
         dest: /etc/systemd/system/docker.service.d/override.conf
         mode: '0644'
       notify: restart docker

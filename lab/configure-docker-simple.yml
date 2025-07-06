@@ -22,12 +22,12 @@
         state: directory
         mode: '0755'
 
-    - name: Configure Docker daemon to listen on eth0
+    - name: Configure Docker daemon to listen on both socket and eth0
       copy:
         content: |
           [Service]
           ExecStart=
-          ExecStart=/usr/bin/dockerd -H fd:// -H tcp://{{ eth0_ip.stdout }}:2375
+          ExecStart=/usr/bin/dockerd -H fd:// -H unix:///var/run/docker.sock -H tcp://{{ eth0_ip.stdout }}:2375
         dest: /etc/systemd/system/docker.service.d/override.conf
         mode: '0644'
       notify: restart docker
@@ -64,22 +64,35 @@
       debug:
         msg: "Docker API version: {{ docker_tcp_check.json.Version }}"
 
-    - name: Configure Docker hosts environment for users
-      lineinfile:
-        path: "/home/{{ item }}/.bashrc"
-        line: 'export DOCKER_HOST=tcp://{{ eth0_ip.stdout }}:2375'
-        create: yes
-        owner: "{{ item }}"
-        group: "{{ item }}"
+    - name: Verify local socket access
+      command: docker ps
+      register: socket_check
+      changed_when: false
+
+    - name: Verify local socket as non-root users
+      become: yes
+      become_user: "{{ item }}"
+      command: docker ps
+      register: user_socket_check
+      changed_when: false
+      ignore_errors: yes
       loop:
         - ansible
         - dsctl
 
+    # Note: We don't set DOCKER_HOST for local users
+    # They should use the socket by default for better performance
+    # Remote clients will need to set DOCKER_HOST=tcp://192.168.100.x:2375
+
     - name: Display connection information
       debug:
         msg:
-          - "Docker is now listening on: tcp://{{ eth0_ip.stdout }}:2375"
-          - "To connect from the Docker Control Platform, use:"
+          - "Docker is now listening on:"
+          - "  - Unix socket: /var/run/docker.sock (local access)"
+          - "  - TCP: tcp://{{ eth0_ip.stdout }}:2375 (remote access)"
+          - ""
+          - "Local users can use: docker ps"
+          - "Remote access from Docker Control Platform:"
           - "  Host: {{ inventory_hostname }}"
           - "  IP: {{ eth0_ip.stdout }}"
           - "  Port: 2375"

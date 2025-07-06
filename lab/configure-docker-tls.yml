@@ -119,7 +119,7 @@
       copy:
         content: |
           {
-            "hosts": ["fd://", "tcp://{{ eth0_ip.stdout }}:2376"],
+            "hosts": ["fd://", "unix:///var/run/docker.sock", "tcp://{{ eth0_ip.stdout }}:2376"],
             "tls": true,
             "tlsverify": true,
             "tlscert": "{{ docker_cert_path }}/server-cert.pem",
