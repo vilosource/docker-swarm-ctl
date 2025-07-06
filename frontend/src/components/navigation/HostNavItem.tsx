@@ -16,6 +16,8 @@ export default function HostNavItem({ host }: HostNavItemProps) {
   const location = useLocation()
   const [isExpanded, setIsExpanded] = useState(false)
   
+  console.log('[HostNavItem] Rendering host:', host)
+  
   const subItems: NavSubItem[] = [
     { name: 'Containers', href: `/hosts/${host.id}/containers`, icon: 'mdi mdi-docker' },
     { name: 'Images', href: `/hosts/${host.id}/images`, icon: 'mdi mdi-layers' },

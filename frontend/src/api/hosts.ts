@@ -11,8 +11,16 @@ import {
 export const hostsApi = {
   // List hosts
   async list(params?: { page?: number; per_page?: number; active_only?: boolean }) {
-    const response = await api.get<PaginatedResponse<DockerHost>>('/hosts', { params })
-    return response.data
+    console.log('[hostsApi.list] Making request with params:', params)
+    try {
+      const response = await api.get<PaginatedResponse<DockerHost>>('/hosts', { params })
+      console.log('[hostsApi.list] Response:', response)
+      console.log('[hostsApi.list] Response data:', response.data)
+      return response.data
+    } catch (error) {
+      console.error('[hostsApi.list] Error:', error)
+      throw error
+    }
   },
 
   // Get single host

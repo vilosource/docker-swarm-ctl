@@ -28,19 +28,45 @@ const adminNavigation = [
 ]
 
 export default function Layout() {
+  console.log('[Layout] Component rendering')
+  
   const navigate = useNavigate()
   const location = useLocation()
   const { user, logout } = useAuthStore()
   const [expandedSections, setExpandedSections] = useState<string[]>(['all-hosts'])
   
   // Fetch hosts for navigation
-  const { data: hostsData } = useQuery({
+  const { data: hostsData, error: hostsError, isLoading: hostsLoading, isError: hostsIsError } = useQuery({
     queryKey: ['hosts', 'navigation'],
     queryFn: () => hostsApi.list({ active_only: true }),
     staleTime: 30000, // Refresh every 30 seconds
+    onSuccess: (data) => {
+      console.log('[Layout] Hosts query success:', data)
+    },
+    onError: (error) => {
+      console.error('[Layout] Hosts query error:', error)
+    },
+  })
+  
+  // Debug logging
+  console.log('[Layout] Hosts query state:', {
+    hostsData,
+    hostsError,
+    hostsLoading,
+    hostsIsError,
+    queryKey: ['hosts', 'navigation'],
+    timestamp: new Date().toISOString()
   })
   
   const hosts = hostsData?.items || []
+  
+  // Simple debug log
+  if (hostsData) {
+    console.log('[Layout] hostsData exists:', hostsData)
+    console.log('[Layout] hostsData.items:', hostsData.items)
+    console.log('[Layout] hosts array:', hosts)
+  }
+  console.log('[Layout] Processed hosts array:', hosts)
   
   const handleLogout = async () => {
     await logout()
@@ -299,13 +325,34 @@ export default function Layout() {
               </li>
               
               {/* Individual Hosts */}
-              {hosts.length > 0 && (
+              {console.log('[Layout] Rendering hosts section, hosts.length:', hosts.length)}
+              {/* Show loading state */}
+              {hostsLoading && (
+                <li className="text-muted text-center py-2">
+                  <small>Loading hosts...</small>
+                </li>
+              )}
+              {/* Show error state */}
+              {hostsIsError && (
+                <li className="text-danger text-center py-2">
+                  <small>Error loading hosts: {(hostsError as any)?.message || 'Unknown error'}</small>
+                </li>
+              )}
+              {/* Show hosts if available */}
+              {!hostsLoading && !hostsIsError && hosts.length > 0 && (
                 <>
                   <li className="menu-title mt-2">Docker Hosts</li>
-                  {hosts.map((host) => (
-                    <HostNavItem key={host.id} host={host} />
-                  ))}
+                  {hosts.map((host) => {
+                    console.log('[Layout] Rendering host:', host)
+                    return <HostNavItem key={host.id} host={host} />
+                  })}
                 </>
+              )}
+              {/* Show empty state */}
+              {!hostsLoading && !hostsIsError && hosts.length === 0 && (
+                <li className="text-muted text-center py-2">
+                  <small>No hosts configured</small>
+                </li>
               )}
               
               {/* Admin Section */}
