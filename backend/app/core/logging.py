@@ -1,17 +1,8 @@
 import logging
-import sys
+from app.core.logging_config import setup_logging
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout)
-    ]
-)
+# Use centralized logging configuration
+setup_logging()
 
-# Create logger
+# Create logger for this module
 logger = logging.getLogger("docker_control_platform")
-
-# Set level based on environment
-logger.setLevel(logging.INFO)

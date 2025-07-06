@@ -7,6 +7,7 @@ import logging
 
 from app.core.config import settings
 from app.core.exceptions import AppException
+from app.core.logging_config import setup_logging
 from app.api.v1.api import api_router
 from app.api.v1.websocket import containers_router as ws_containers_router
 from app.db.session import engine
@@ -14,9 +15,8 @@ from app.db.base import Base
 from app.db.base_class import *  # noqa - Import all models
 from app.utils.redis import RedisClient
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Configure logging with self-monitoring filter
+logger = setup_logging()
 
 
 @asynccontextmanager
