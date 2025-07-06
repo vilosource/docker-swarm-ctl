@@ -23,7 +23,7 @@
 #side-menu .nav-second-level > li > a,
 #side-menu ul.nav-second-level li a,
 .nav-second-level li a {
-  padding: 8px 15px 8px 20px !important;
+  padding: 8px 15px 8px 15px !important;
   min-height: auto !important;
 }
 
@@ -124,10 +124,10 @@ html[data-sidebar-size=condensed] .left-side-menu #sidebar-menu > ul > li > a {
 .metismenu .nav-second-level li a,
 .nav-second-level.mm-show li a,
 .nav-second-level.mm-collapse li a {
-  padding-left: 20px !important;
+  padding-left: 15px !important;
 }
 
 /* Force all submenu items to have consistent padding */
 ul.nav-second-level > li > a {
-  padding-left: 20px !important;
+  padding-left: 15px !important;
 }
