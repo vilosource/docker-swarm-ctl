@@ -296,31 +296,31 @@ async def container_logs_ws(
                     # Handle graceful shutdown
                     pass
         
-        except WebSocketDisconnect:
-            # Only log if not self-monitoring
-            if not is_self_monitoring(container_id, docker):
-                logger.info(f"WebSocket disconnected for container {container_id}")
-        except Exception as e:
-            logger.error(f"Error in WebSocket connection: {e}")
-            try:
-                await websocket.send_json({
-                    "type": "error",
-                    "message": str(e),
-                    "timestamp": datetime.utcnow().isoformat()
-                })
-            except:
-                pass
-        finally:
-            # Cleanup
-            await manager.disconnect(websocket, container_id, suppress_logs)
+    except WebSocketDisconnect:
+        # Only log if not self-monitoring
+        if not is_self_monitoring(container_id, docker):
+            logger.info(f"WebSocket disconnected for container {container_id}")
+    except Exception as e:
+        logger.error(f"Error in WebSocket connection: {e}")
+        try:
+            await websocket.send_json({
+                "type": "error",
+                "message": str(e),
+                "timestamp": datetime.utcnow().isoformat()
+            })
+        except:
+            pass
+    finally:
+        # Cleanup
+        await manager.disconnect(websocket, container_id, suppress_logs)
+        
+        # If this was the last connection, stop the stream
+        if manager.get_connection_count(container_id) == 0:
+            await LogStreamManager.stop_stream(container_id)
             
-            # If this was the last connection, stop the stream
-            if manager.get_connection_count(container_id) == 0:
-                await LogStreamManager.stop_stream(container_id)
-                
-            # Close DB session if it was opened
-            if db_session:
-                await db_session.__aexit__(None, None, None)
+        # Close DB session if it was opened
+        if db_session:
+            await db_session.__aexit__(None, None, None)
 
 
 @router.websocket("/containers/{container_id}/stats")
