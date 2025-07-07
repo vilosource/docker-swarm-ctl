@@ -30,7 +30,7 @@ export default function Networks() {
   // Delete network mutation
   const deleteMutation = useMutation({
     mutationFn: ({ id, hostId }: { id: string; hostId?: string }) => 
-      networksApi.remove(id, hostId),
+      networksApi.delete(id, hostId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['networks'] })
       setSelectedNetworks(new Set())
@@ -47,7 +47,7 @@ export default function Networks() {
 
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
-      setSelectedNetworks(new Set(networks.map(n => n.id)))
+      setSelectedNetworks(new Set(networks.map(n => n.Id)))
     } else {
       setSelectedNetworks(new Set())
     }
@@ -201,36 +201,36 @@ export default function Networks() {
                 <tbody>
                   {networks.map((network) => {
                     const host = getHostInfo(network)
-                    const containerCount = Object.keys(network.containers || {}).length
+                    const containerCount = Object.keys(network.Containers || {}).length
                     
                     return (
-                      <tr key={`${network.host_id}-${network.id}`}>
+                      <tr key={`${network.host_id}-${network.Id}`}>
                         <td>
                           <input
                             type="checkbox"
                             className="form-check-input"
-                            checked={selectedNetworks.has(network.id)}
-                            onChange={() => handleSelect(network.id)}
+                            checked={selectedNetworks.has(network.Id)}
+                            onChange={() => handleSelect(network.Id)}
                           />
                         </td>
                         <td>
-                          <strong>{network.name}</strong>
+                          <strong>{network.Name}</strong>
                           <div className="small text-muted text-truncate" style={{ maxWidth: '200px' }}>
-                            {network.id.substring(0, 12)}
+                            {network.Id.substring(0, 12)}
                           </div>
                         </td>
                         <td>
-                          <span className={`badge bg-soft-${getNetworkBadgeColor(network.driver)} text-${getNetworkBadgeColor(network.driver)}`}>
-                            {network.driver}
+                          <span className={`badge bg-soft-${getNetworkBadgeColor(network.Driver)} text-${getNetworkBadgeColor(network.Driver)}`}>
+                            {network.Driver}
                           </span>
                         </td>
                         <td>
-                          <span className={`badge bg-soft-${network.scope === 'local' ? 'info' : 'primary'} text-${network.scope === 'local' ? 'info' : 'primary'}`}>
-                            {network.scope}
+                          <span className={`badge bg-soft-${network.Scope === 'local' ? 'info' : 'primary'} text-${network.Scope === 'local' ? 'info' : 'primary'}`}>
+                            {network.Scope}
                           </span>
                         </td>
                         <td>
-                          <code className="small">{formatSubnet(network.ipam)}</code>
+                          <code className="small">{formatSubnet(network.IPAM)}</code>
                         </td>
                         <td>
                           {containerCount > 0 ? (
@@ -257,22 +257,22 @@ export default function Networks() {
                         )}
                         <td>
                           <div className="d-flex gap-2">
-                            {network.internal && (
+                            {network.Internal && (
                               <span className="badge bg-soft-warning text-warning" title="Internal network">
                                 Internal
                               </span>
                             )}
-                            {network.attachable && (
+                            {network.Attachable && (
                               <span className="badge bg-soft-info text-info" title="Attachable">
                                 Attachable
                               </span>
                             )}
-                            {network.ingress && (
+                            {network.Ingress && (
                               <span className="badge bg-soft-purple text-purple" title="Ingress network">
                                 Ingress
                               </span>
                             )}
-                            {network.enable_ipv6 && (
+                            {network.EnableIPv6 && (
                               <span className="badge bg-soft-dark text-dark" title="IPv6 enabled">
                                 IPv6
                               </span>
@@ -282,7 +282,7 @@ export default function Networks() {
                         <td>
                           <div className="btn-group btn-group-sm">
                             <Link 
-                              to={`/networks/${network.id}?host_id=${network.host_id}`}
+                              to={`/networks/${network.Id}?host_id=${network.host_id}`}
                               className="btn btn-soft-info"
                               title="View details"
                             >
@@ -292,8 +292,8 @@ export default function Networks() {
                               className="btn btn-soft-danger"
                               title="Delete network"
                               onClick={() => {
-                                if (confirm(`Are you sure you want to delete network "${network.name}"?`)) {
-                                  deleteMutation.mutate({ id: network.id, hostId: network.host_id })
+                                if (confirm(`Are you sure you want to delete network "${network.Name}"?`)) {
+                                  deleteMutation.mutate({ id: network.Id, hostId: network.host_id })
                                 }
                               }}
                               disabled={deleteMutation.isPending || containerCount > 0}

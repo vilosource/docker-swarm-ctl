@@ -37,7 +37,7 @@ export const networksApi = {
   },
 
   // Remove network
-  async remove(networkId: string, hostId?: string) {
+  async delete(networkId: string, hostId?: string) {
     await api.delete(`/networks/${networkId}`, {
       params: { host_id: hostId }
     })

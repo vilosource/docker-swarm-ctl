@@ -18,19 +18,19 @@ export interface NetworkCreate {
 }
 
 export interface Network {
-  id: string
-  name: string
-  driver: string
-  scope: string
-  ipam?: any
-  internal: boolean
-  attachable: boolean
-  ingress: boolean
-  containers: Record<string, any>
-  options?: Record<string, string>
-  labels: Record<string, string>
-  created?: string
-  enable_ipv6: boolean
+  Id: string
+  Name: string
+  Driver: string
+  Scope: string
+  IPAM?: any
+  Internal: boolean
+  Attachable: boolean
+  Ingress: boolean
+  Containers: Record<string, any>
+  Options?: Record<string, string>
+  Labels: Record<string, string>
+  Created?: string
+  EnableIPv6: boolean
   host_id?: string
   host_name?: string
 }
