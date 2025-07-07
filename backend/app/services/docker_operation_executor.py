@@ -147,7 +147,7 @@ class DockerOperationExecutor:
             all_containers = []
             for host in accessible_hosts:
                 try:
-                    async with self._get_client_context(host.id) as (client, resolved_host_id):
+                    async with self._get_client_context(str(host.id)) as (client, resolved_host_id):
                         kwargs = {"all": all}
                         if filters:
                             kwargs["filters"] = filters
@@ -355,7 +355,7 @@ class DockerOperationExecutor:
             all_images = []
             for host in accessible_hosts:
                 try:
-                    async with self._get_client_context(host.id) as (client, resolved_host_id):
+                    async with self._get_client_context(str(host.id)) as (client, resolved_host_id):
                         kwargs = {"all": all}
                         if name:
                             kwargs["name"] = name
@@ -471,7 +471,7 @@ class DockerOperationExecutor:
             all_volumes = []
             for host in accessible_hosts:
                 try:
-                    async with self._get_client_context(host.id) as (client, resolved_host_id):
+                    async with self._get_client_context(str(host.id)) as (client, resolved_host_id):
                         volumes = client.volumes.list(filters=filters)
                         all_volumes.extend([(v, resolved_host_id) for v in volumes])
                 except Exception as e:
@@ -568,7 +568,7 @@ class DockerOperationExecutor:
             all_networks = []
             for host in accessible_hosts:
                 try:
-                    async with self._get_client_context(host.id) as (client, resolved_host_id):
+                    async with self._get_client_context(str(host.id)) as (client, resolved_host_id):
                         networks = client.networks.list(names=names, ids=ids, filters=filters)
                         all_networks.extend([(n, resolved_host_id) for n in networks])
                 except Exception as e:
