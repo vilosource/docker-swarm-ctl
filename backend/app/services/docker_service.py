@@ -338,7 +338,7 @@ class UnifiedDockerService:
     ) -> List[NetworkData]:
         """List networks"""
         network_tuples = await self._executor.list_networks(names, ids, filters, host_id)
-        return [NetworkData(network, host_id) for network, host_id in network_tuples]
+        return [NetworkData(network, resolved_host_id) for network, resolved_host_id in network_tuples]
     
     async def create_network(
         self,

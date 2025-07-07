@@ -121,14 +121,53 @@ class DockerOperationExecutor:
         filters: Optional[Dict[str, Any]] = None,
         host_id: Optional[str] = None
     ) -> List[tuple[Container, str]]:
-        """List containers from the specified or default host"""
-        async with self._get_client_context(host_id) as (client, resolved_host_id):
-            kwargs = {"all": all}
-            if filters:
-                kwargs["filters"] = filters
+        """List containers from specified host or all accessible hosts"""
+        # If host_id is specified, query only that host
+        if host_id:
+            async with self._get_client_context(host_id) as (client, resolved_host_id):
+                kwargs = {"all": all}
+                if filters:
+                    kwargs["filters"] = filters
+                
+                containers = client.containers.list(**kwargs)
+                return [(c, resolved_host_id) for c in containers]
+        
+        # If no host_id, query all accessible hosts (for multi-host adapter)
+        if isinstance(self._adapter, MultiHostAdapter):
+            from app.services.permission_service import get_permission_service
+            permission_service = get_permission_service()
             
-            containers = client.containers.list(**kwargs)
-            return [(c, resolved_host_id) for c in containers]
+            # Get all accessible hosts
+            accessible_hosts = await permission_service.get_accessible_hosts(
+                self._adapter._user, 
+                self._adapter._db
+            )
+            
+            # Query containers from all accessible hosts
+            all_containers = []
+            for host in accessible_hosts:
+                try:
+                    async with self._get_client_context(host.id) as (client, resolved_host_id):
+                        kwargs = {"all": all}
+                        if filters:
+                            kwargs["filters"] = filters
+                        
+                        containers = client.containers.list(**kwargs)
+                        all_containers.extend([(c, resolved_host_id) for c in containers])
+                except Exception as e:
+                    logger.warning(f"Failed to list containers from host {host.id}: {e}")
+                    continue
+            
+            return all_containers
+        else:
+            # Single host adapter - use default behavior
+            async with self._get_client_context(host_id) as (client, resolved_host_id):
+                kwargs = {"all": all}
+                if filters:
+                    kwargs["filters"] = filters
+                
+                containers = client.containers.list(**kwargs)
+                return [(c, resolved_host_id) for c in containers]
     
     @docker_operation("get_container")
     async def get_container(
@@ -287,16 +326,60 @@ class DockerOperationExecutor:
         all: bool = False,
         filters: Optional[Dict[str, Any]] = None,
         host_id: Optional[str] = None
-    ) -> List[Any]:
-        """List images"""
-        async with self._get_client_context(host_id) as (client, resolved_host_id):
-            kwargs = {"all": all}
-            if name:
-                kwargs["name"] = name
-            if filters:
-                kwargs["filters"] = filters
+    ) -> List[tuple[Any, str]]:
+        """List images from specified host or all accessible hosts"""
+        # If host_id is specified, query only that host
+        if host_id:
+            async with self._get_client_context(host_id) as (client, resolved_host_id):
+                kwargs = {"all": all}
+                if name:
+                    kwargs["name"] = name
+                if filters:
+                    kwargs["filters"] = filters
+                
+                images = client.images.list(**kwargs)
+                return [(img, resolved_host_id) for img in images]
+        
+        # If no host_id, query all accessible hosts (for multi-host adapter)
+        if isinstance(self._adapter, MultiHostAdapter):
+            from app.services.permission_service import get_permission_service
+            permission_service = get_permission_service()
             
-            return client.images.list(**kwargs)
+            # Get all accessible hosts
+            accessible_hosts = await permission_service.get_accessible_hosts(
+                self._adapter._user, 
+                self._adapter._db
+            )
+            
+            # Query images from all accessible hosts
+            all_images = []
+            for host in accessible_hosts:
+                try:
+                    async with self._get_client_context(host.id) as (client, resolved_host_id):
+                        kwargs = {"all": all}
+                        if name:
+                            kwargs["name"] = name
+                        if filters:
+                            kwargs["filters"] = filters
+                        
+                        images = client.images.list(**kwargs)
+                        all_images.extend([(img, resolved_host_id) for img in images])
+                except Exception as e:
+                    logger.warning(f"Failed to list images from host {host.id}: {e}")
+                    continue
+            
+            return all_images
+        else:
+            # Single host adapter - use default behavior
+            async with self._get_client_context(host_id) as (client, resolved_host_id):
+                kwargs = {"all": all}
+                if name:
+                    kwargs["name"] = name
+                if filters:
+                    kwargs["filters"] = filters
+                
+                images = client.images.list(**kwargs)
+                return [(img, resolved_host_id) for img in images]
     
     @docker_operation("pull_image")
     async def pull_image(
@@ -366,10 +449,41 @@ class DockerOperationExecutor:
         filters: Optional[Dict[str, Any]] = None,
         host_id: Optional[str] = None
     ) -> List[tuple[Any, str]]:
-        """List volumes"""
-        async with self._get_client_context(host_id) as (client, resolved_host_id):
-            volumes = client.volumes.list(filters=filters)
-            return [(v, resolved_host_id) for v in volumes]
+        """List volumes from specified host or all accessible hosts"""
+        # If host_id is specified, query only that host
+        if host_id:
+            async with self._get_client_context(host_id) as (client, resolved_host_id):
+                volumes = client.volumes.list(filters=filters)
+                return [(v, resolved_host_id) for v in volumes]
+        
+        # If no host_id, query all accessible hosts (for multi-host adapter)
+        if isinstance(self._adapter, MultiHostAdapter):
+            from app.services.permission_service import get_permission_service
+            permission_service = get_permission_service()
+            
+            # Get all accessible hosts
+            accessible_hosts = await permission_service.get_accessible_hosts(
+                self._adapter._user, 
+                self._adapter._db
+            )
+            
+            # Query volumes from all accessible hosts
+            all_volumes = []
+            for host in accessible_hosts:
+                try:
+                    async with self._get_client_context(host.id) as (client, resolved_host_id):
+                        volumes = client.volumes.list(filters=filters)
+                        all_volumes.extend([(v, resolved_host_id) for v in volumes])
+                except Exception as e:
+                    logger.warning(f"Failed to list volumes from host {host.id}: {e}")
+                    continue
+            
+            return all_volumes
+        else:
+            # Single host adapter - use default behavior
+            async with self._get_client_context(host_id) as (client, resolved_host_id):
+                volumes = client.volumes.list(filters=filters)
+                return [(v, resolved_host_id) for v in volumes]
     
     @docker_operation("create_volume")
     async def create_volume(
@@ -432,10 +546,41 @@ class DockerOperationExecutor:
         filters: Optional[Dict[str, Any]] = None,
         host_id: Optional[str] = None
     ) -> List[tuple[Any, str]]:
-        """List networks"""
-        async with self._get_client_context(host_id) as (client, resolved_host_id):
-            networks = client.networks.list(names=names, ids=ids, filters=filters)
-            return [(n, resolved_host_id) for n in networks]
+        """List networks from specified host or all accessible hosts"""
+        # If host_id is specified, query only that host
+        if host_id:
+            async with self._get_client_context(host_id) as (client, resolved_host_id):
+                networks = client.networks.list(names=names, ids=ids, filters=filters)
+                return [(n, resolved_host_id) for n in networks]
+        
+        # If no host_id, query all accessible hosts (for multi-host adapter)
+        if isinstance(self._adapter, MultiHostAdapter):
+            from app.services.permission_service import get_permission_service
+            permission_service = get_permission_service()
+            
+            # Get all accessible hosts
+            accessible_hosts = await permission_service.get_accessible_hosts(
+                self._adapter._user, 
+                self._adapter._db
+            )
+            
+            # Query networks from all accessible hosts
+            all_networks = []
+            for host in accessible_hosts:
+                try:
+                    async with self._get_client_context(host.id) as (client, resolved_host_id):
+                        networks = client.networks.list(names=names, ids=ids, filters=filters)
+                        all_networks.extend([(n, resolved_host_id) for n in networks])
+                except Exception as e:
+                    logger.warning(f"Failed to list networks from host {host.id}: {e}")
+                    continue
+            
+            return all_networks
+        else:
+            # Single host adapter - use default behavior
+            async with self._get_client_context(host_id) as (client, resolved_host_id):
+                networks = client.networks.list(names=names, ids=ids, filters=filters)
+                return [(n, resolved_host_id) for n in networks]
     
     @docker_operation("create_network")
     async def create_network(
