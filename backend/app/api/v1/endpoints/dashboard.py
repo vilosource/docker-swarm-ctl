@@ -21,7 +21,6 @@ from app.schemas.dashboard import (
     HostSummary, HostStats
 )
 from app.services.docker_service import IDockerService, DockerServiceFactory
-from app.services.circuit_breaker import get_circuit_breaker_manager
 from app.api.decorators_enhanced import handle_api_errors
 
 
@@ -31,12 +30,6 @@ router = APIRouter()
 async def get_host_stats(docker_service: IDockerService, host: DockerHost) -> Optional[HostStats]:
     """Get statistics for a single host"""
     try:
-        # Check circuit breaker status first
-        breaker_manager = get_circuit_breaker_manager()
-        if not await breaker_manager.can_execute(f"host_{host.id}"):
-            logger.warning(f"Circuit breaker open for host {host.name}")
-            return None
-        
         # Get Docker info for the host
         info = await docker_service.get_system_info(host_id=str(host.id))
         
@@ -54,7 +47,7 @@ async def get_host_stats(docker_service: IDockerService, host: DockerHost) -> Op
         )
     except Exception as e:
         logger.error(f"Error getting stats for host {host.name}: {e}")
-        await breaker_manager.record_failure(f"host_{host.id}")
+        # The circuit breaker is handled at the DockerOperationExecutor level
         return None
 
 
