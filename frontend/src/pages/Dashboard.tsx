@@ -64,18 +64,18 @@ export default function Dashboard() {
 
   const resourceStats: Array<{
     label: string
-    value: number
+    value?: number
+    customValue?: ReactNode
     icon: string
     color: string
     detail?: ReactNode
   }> = [
     { 
       label: 'Containers', 
-      value: dashboard.resources.containers.total, 
       icon: 'mdi mdi-docker',
       color: 'info',
-      detail: (
-        <div className="d-flex align-items-center gap-2">
+      customValue: (
+        <h3 className="mb-0 d-flex align-items-center gap-2">
           <span className="text-success">
             <i className="mdi mdi-play-circle me-1"></i>
             {dashboard.resources.containers.running}
@@ -85,7 +85,7 @@ export default function Dashboard() {
             <i className="mdi mdi-stop-circle me-1"></i>
             {dashboard.resources.containers.stopped}
           </span>
-        </div>
+        </h3>
       )
     },
     { 
@@ -179,7 +179,11 @@ export default function Dashboard() {
                 <div className="d-flex w-100">
                   <div className="flex-grow-1">
                     <span className="text-muted text-uppercase fs-12 fw-bold">{stat.label}</span>
-                    <h3 className="mb-0">{stat.value}</h3>
+                    {stat.customValue ? (
+                      <div className="mt-2">{stat.customValue}</div>
+                    ) : (
+                      <h3 className="mb-0">{stat.value}</h3>
+                    )}
                     {stat.detail && (
                       <div className="mt-1">
                         {typeof stat.detail === 'string' ? (
