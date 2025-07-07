@@ -58,6 +58,106 @@ class ContainerData:
         return self.container.labels or {}
 
 
+class VolumeData:
+    """Data class for volume information"""
+    def __init__(self, volume, host_id: Optional[str] = None):
+        self.volume = volume
+        self.host_id = host_id
+        self._attrs = volume.attrs if hasattr(volume, 'attrs') else {}
+    
+    @property
+    def name(self) -> str:
+        return self._attrs.get("Name", self.volume.name if hasattr(self.volume, 'name') else "")
+    
+    @property
+    def driver(self) -> str:
+        return self._attrs.get("Driver", "")
+    
+    @property
+    def mountpoint(self) -> str:
+        return self._attrs.get("Mountpoint", "")
+    
+    @property
+    def created_at(self) -> Optional[str]:
+        return self._attrs.get("CreatedAt")
+    
+    @property
+    def status(self) -> Optional[Dict[str, Any]]:
+        return self._attrs.get("Status")
+    
+    @property
+    def labels(self) -> Dict[str, str]:
+        return self._attrs.get("Labels", {})
+    
+    @property
+    def scope(self) -> str:
+        return self._attrs.get("Scope", "local")
+    
+    @property
+    def options(self) -> Optional[Dict[str, str]]:
+        return self._attrs.get("Options")
+
+
+class NetworkData:
+    """Data class for network information"""
+    def __init__(self, network, host_id: Optional[str] = None):
+        self.network = network
+        self.host_id = host_id
+        self._attrs = network.attrs if hasattr(network, 'attrs') else {}
+    
+    @property
+    def id(self) -> str:
+        return self._attrs.get("Id", self.network.id if hasattr(self.network, 'id') else "")
+    
+    @property
+    def name(self) -> str:
+        return self._attrs.get("Name", self.network.name if hasattr(self.network, 'name') else "")
+    
+    @property
+    def driver(self) -> str:
+        return self._attrs.get("Driver", "")
+    
+    @property
+    def scope(self) -> str:
+        return self._attrs.get("Scope", "")
+    
+    @property
+    def ipam(self) -> Optional[Dict[str, Any]]:
+        return self._attrs.get("IPAM")
+    
+    @property
+    def internal(self) -> bool:
+        return self._attrs.get("Internal", False)
+    
+    @property
+    def attachable(self) -> bool:
+        return self._attrs.get("Attachable", False)
+    
+    @property
+    def ingress(self) -> bool:
+        return self._attrs.get("Ingress", False)
+    
+    @property
+    def containers(self) -> Dict[str, Dict[str, Any]]:
+        return self._attrs.get("Containers", {})
+    
+    @property
+    def options(self) -> Optional[Dict[str, str]]:
+        return self._attrs.get("Options")
+    
+    @property
+    def labels(self) -> Dict[str, str]:
+        return self._attrs.get("Labels", {})
+    
+    @property
+    def created(self) -> Optional[str]:
+        return self._attrs.get("Created")
+    
+    @property
+    def enable_ipv6(self) -> bool:
+        return self._attrs.get("EnableIPv6", False)
+
+
 class UnifiedDockerService:
     """
     Unified Docker service that works for both single and multi-host deployments
@@ -185,9 +285,10 @@ class UnifiedDockerService:
         self,
         filters: Optional[Dict[str, Any]] = None,
         host_id: Optional[str] = None
-    ) -> List[Any]:
+    ) -> List[VolumeData]:
         """List volumes"""
-        return await self._executor.list_volumes(filters, host_id)
+        volume_tuples = await self._executor.list_volumes(filters, host_id)
+        return [VolumeData(volume, host_id) for volume, host_id in volume_tuples]
     
     async def create_volume(
         self,
@@ -196,17 +297,19 @@ class UnifiedDockerService:
         driver_opts: Optional[Dict[str, str]] = None,
         labels: Optional[Dict[str, str]] = None,
         host_id: Optional[str] = None
-    ) -> Any:
+    ) -> VolumeData:
         """Create a volume"""
-        return await self._executor.create_volume(name, driver, driver_opts, labels, host_id)
+        volume, resolved_host_id = await self._executor.create_volume(name, driver, driver_opts, labels, host_id)
+        return VolumeData(volume, resolved_host_id)
     
     async def get_volume(
         self,
         volume_id: str,
         host_id: Optional[str] = None
-    ) -> Any:
+    ) -> VolumeData:
         """Get a volume"""
-        return await self._executor.get_volume(volume_id, host_id)
+        volume, resolved_host_id = await self._executor.get_volume(volume_id, host_id)
+        return VolumeData(volume, resolved_host_id)
     
     async def remove_volume(
         self,
@@ -232,9 +335,10 @@ class UnifiedDockerService:
         ids: Optional[List[str]] = None,
         filters: Optional[Dict[str, Any]] = None,
         host_id: Optional[str] = None
-    ) -> List[Any]:
+    ) -> List[NetworkData]:
         """List networks"""
-        return await self._executor.list_networks(names, ids, filters, host_id)
+        network_tuples = await self._executor.list_networks(names, ids, filters, host_id)
+        return [NetworkData(network, host_id) for network, host_id in network_tuples]
     
     async def create_network(
         self,
@@ -249,20 +353,22 @@ class UnifiedDockerService:
         attachable: bool = True,
         scope: Optional[str] = None,
         host_id: Optional[str] = None
-    ) -> Any:
+    ) -> NetworkData:
         """Create a network"""
-        return await self._executor.create_network(
+        network, resolved_host_id = await self._executor.create_network(
             name, driver, options, ipam, check_duplicate, 
             internal, labels, enable_ipv6, attachable, scope, host_id
         )
+        return NetworkData(network, resolved_host_id)
     
     async def get_network(
         self,
         network_id: str,
         host_id: Optional[str] = None
-    ) -> Any:
+    ) -> NetworkData:
         """Get a network"""
-        return await self._executor.get_network(network_id, host_id)
+        network, resolved_host_id = await self._executor.get_network(network_id, host_id)
+        return NetworkData(network, resolved_host_id)
     
     async def remove_network(
         self,

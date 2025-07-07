@@ -365,10 +365,11 @@ class DockerOperationExecutor:
         self,
         filters: Optional[Dict[str, Any]] = None,
         host_id: Optional[str] = None
-    ) -> List[Any]:
+    ) -> List[tuple[Any, str]]:
         """List volumes"""
         async with self._get_client_context(host_id) as (client, resolved_host_id):
-            return client.volumes.list(filters=filters)
+            volumes = client.volumes.list(filters=filters)
+            return [(v, resolved_host_id) for v in volumes]
     
     @docker_operation("create_volume")
     async def create_volume(
@@ -378,25 +379,27 @@ class DockerOperationExecutor:
         driver_opts: Optional[Dict[str, str]] = None,
         labels: Optional[Dict[str, str]] = None,
         host_id: Optional[str] = None
-    ) -> Any:
+    ) -> tuple[Any, str]:
         """Create a volume"""
         async with self._get_client_context(host_id) as (client, resolved_host_id):
-            return client.volumes.create(
+            volume = client.volumes.create(
                 name=name,
                 driver=driver,
                 driver_opts=driver_opts,
                 labels=labels
             )
+            return volume, resolved_host_id
     
     @docker_operation("get_volume")
     async def get_volume(
         self,
         volume_id: str,
         host_id: Optional[str] = None
-    ) -> Any:
+    ) -> tuple[Any, str]:
         """Get a volume"""
         async with self._get_client_context(host_id) as (client, resolved_host_id):
-            return client.volumes.get(volume_id)
+            volume = client.volumes.get(volume_id)
+            return volume, resolved_host_id
     
     @docker_operation("remove_volume")
     async def remove_volume(
@@ -428,10 +431,11 @@ class DockerOperationExecutor:
         ids: Optional[List[str]] = None,
         filters: Optional[Dict[str, Any]] = None,
         host_id: Optional[str] = None
-    ) -> List[Any]:
+    ) -> List[tuple[Any, str]]:
         """List networks"""
         async with self._get_client_context(host_id) as (client, resolved_host_id):
-            return client.networks.list(names=names, ids=ids, filters=filters)
+            networks = client.networks.list(names=names, ids=ids, filters=filters)
+            return [(n, resolved_host_id) for n in networks]
     
     @docker_operation("create_network")
     async def create_network(
@@ -447,10 +451,10 @@ class DockerOperationExecutor:
         attachable: bool = True,
         scope: Optional[str] = None,
         host_id: Optional[str] = None
-    ) -> Any:
+    ) -> tuple[Any, str]:
         """Create a network"""
         async with self._get_client_context(host_id) as (client, resolved_host_id):
-            return client.networks.create(
+            network = client.networks.create(
                 name=name,
                 driver=driver,
                 options=options,
@@ -462,16 +466,18 @@ class DockerOperationExecutor:
                 attachable=attachable,
                 scope=scope
             )
+            return network, resolved_host_id
     
     @docker_operation("get_network")
     async def get_network(
         self,
         network_id: str,
         host_id: Optional[str] = None
-    ) -> Any:
+    ) -> tuple[Any, str]:
         """Get a network"""
         async with self._get_client_context(host_id) as (client, resolved_host_id):
-            return client.networks.get(network_id)
+            network = client.networks.get(network_id)
+            return network, resolved_host_id
     
     @docker_operation("remove_network")
     async def remove_network(

@@ -3,7 +3,7 @@ Volume management endpoints
 """
 
 from typing import List, Optional
-from fastapi import APIRouter, Depends, Query, Request, HTTPException
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 import json
 
@@ -14,7 +14,6 @@ from app.schemas.volume import (
     VolumeCreate, VolumeResponse, VolumeInspect, VolumePruneResponse
 )
 from app.services.docker_service import IDockerService, DockerServiceFactory
-from app.services.host_service import get_host_service
 from app.models.user import User
 from app.api.decorators import audit_operation
 from app.api.decorators_enhanced import handle_api_errors, standard_response
@@ -32,21 +31,19 @@ async def get_docker_service(
     return DockerServiceFactory.create(current_user, db, multi_host=True)
 
 
-def format_volume(volume_data, host_id: Optional[str] = None, host_name: Optional[str] = None) -> VolumeResponse:
+def format_volume(volume_data) -> VolumeResponse:
     """Format volume data for response"""
-    attrs = volume_data.attrs if hasattr(volume_data, 'attrs') else volume_data
-    
     return VolumeResponse(
-        name=attrs.get("Name", volume_data.name if hasattr(volume_data, 'name') else ""),
-        driver=attrs.get("Driver", ""),
-        mountpoint=attrs.get("Mountpoint", ""),
-        created_at=attrs.get("CreatedAt"),
-        status=attrs.get("Status"),
-        labels=attrs.get("Labels", {}),
-        scope=attrs.get("Scope", "local"),
-        options=attrs.get("Options"),
-        host_id=host_id,
-        host_name=host_name
+        name=volume_data.name,
+        driver=volume_data.driver,
+        mountpoint=volume_data.mountpoint,
+        created_at=volume_data.created_at,
+        status=volume_data.status,
+        labels=volume_data.labels,
+        scope=volume_data.scope,
+        options=volume_data.options,
+        host_id=volume_data.host_id,
+        host_name=None  # TODO: Add host name to VolumeData if needed
     )
 
 
@@ -55,8 +52,7 @@ def format_volume(volume_data, host_id: Optional[str] = None, host_name: Optiona
 async def list_volumes(
     filters: Optional[str] = Query(None, description="JSON encoded filters"),
     host_id: Optional[str] = Query(None, description="Docker host ID"),
-    docker_service: IDockerService = Depends(get_docker_service),
-    db: AsyncSession = Depends(get_db)
+    docker_service: IDockerService = Depends(get_docker_service)
 ):
     """List volumes from specified or all Docker hosts"""
     filter_dict = None
@@ -66,37 +62,8 @@ async def list_volumes(
         except json.JSONDecodeError:
             raise ValidationError("filters", "Invalid JSON format")
     
-    if host_id:
-        # Single host query
-        volumes = await docker_service.list_volumes(filters=filter_dict, host_id=host_id)
-        
-        # Get host info
-        host_service = await get_host_service(db)
-        host = await host_service.get_by_id(host_id)
-        host_name = host.display_name or host.name if host else None
-        
-        return [format_volume(vol, host_id, host_name) for vol in volumes]
-    else:
-        # Multi-host query - get volumes from all active hosts
-        host_service = await get_host_service(db)
-        hosts = await host_service.get_all_active()
-        
-        all_volumes = []
-        for host in hosts:
-            try:
-                volumes = await docker_service.list_volumes(
-                    filters=filter_dict, 
-                    host_id=str(host.id)
-                )
-                host_name = host.display_name or host.name
-                all_volumes.extend([
-                    format_volume(vol, str(host.id), host_name) 
-                    for vol in volumes
-                ])
-            except Exception as e:
-                logger.warning(f"Failed to get volumes from host {host.name}: {e}")
-                
-        return all_volumes
+    volumes = await docker_service.list_volumes(filters=filter_dict, host_id=host_id)
+    return [format_volume(vol) for vol in volumes]
 
 
 @router.post("/", response_model=VolumeResponse)
@@ -119,15 +86,7 @@ async def create_volume(
         host_id=host_id
     )
     
-    # Get host info for response
-    if host_id:
-        host_service = await get_host_service(db)
-        host = await host_service.get_by_id(host_id)
-        host_name = host.display_name or host.name if host else None
-    else:
-        host_name = None
-    
-    return format_volume(created_volume, host_id, host_name)
+    return format_volume(created_volume)
 
 
 @router.get("/{volume_name}", response_model=VolumeInspect)
@@ -138,14 +97,15 @@ async def get_volume(
     docker_service: IDockerService = Depends(get_docker_service)
 ):
     """Get volume details"""
-    volume = await docker_service.get_volume(volume_name, host_id)
-    return VolumeInspect(**volume.attrs)
+    volume_data = await docker_service.get_volume(volume_name, host_id)
+    # Access the underlying volume object's attrs
+    return VolumeInspect(**volume_data.volume.attrs)
 
 
 @router.delete("/{volume_name}")
 @handle_api_errors("remove_volume")
 @audit_operation("volume.delete", "volume")
-@standard_response("Volume {volume_name} removed")
+@standard_response("Volume removed successfully")
 async def remove_volume(
     request: Request,
     volume_name: str,
