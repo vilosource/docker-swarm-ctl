@@ -12,7 +12,7 @@ from sqlalchemy import select, and_
 
 from app.repositories.host_repository import HostRepository
 from app.models import DockerHost, User, HostTag, HostCredential, UserHostPermission
-from app.schemas.host import HostCreate, HostUpdate
+from app.schemas.docker_host import DockerHostCreate as HostCreate, DockerHostUpdate as HostUpdate
 from app.services.encryption import get_encryption_service
 from app.services.docker_connection_manager import get_docker_connection_manager
 from app.core.exceptions import DockerConnectionError, ValidationError

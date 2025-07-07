@@ -8,7 +8,7 @@ Implements the Repository pattern to separate data access from business logic.
 from typing import List, Optional, Dict, Any
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, or_
+from sqlalchemy import select, and_, or_, func
 from sqlalchemy.orm import selectinload
 
 from app.models import DockerHost, User, UserRole, HostTag, HostCredential
@@ -271,7 +271,7 @@ class HostRepository:
     
     async def count_all(self) -> int:
         """Get total count of hosts"""
-        query = select(DockerHost).count()
+        query = select(func.count()).select_from(DockerHost)
         result = await self.db.execute(query)
         return result.scalar() or 0
     
@@ -283,7 +283,8 @@ class HostRepository:
         from app.models import UserHostPermission
         
         query = (
-            select(DockerHost)
+            select(func.count())
+            .select_from(DockerHost)
             .join(UserHostPermission)
             .where(
                 and_(
@@ -291,7 +292,6 @@ class HostRepository:
                     DockerHost.is_active == True
                 )
             )
-            .count()
         )
         result = await self.db.execute(query)
         return result.scalar() or 0
