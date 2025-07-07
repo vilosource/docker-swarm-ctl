@@ -45,13 +45,43 @@ export default function HostSystem() {
   return (
     <>
       <PageTitle 
-        title={`System - ${host?.data.name || 'Loading...'}`}
+        title="System Information"
         breadcrumb={[
           { title: 'Hosts', href: '/hosts' },
-          { title: host?.data.name || 'Loading...', href: `/hosts/${hostId}` },
+          { title: host?.display_name || host?.name || 'Host', href: `/hosts/${hostId}/system` },
           { title: 'System' }
         ]}
       />
+      
+      {/* Host Details Card */}
+      {host && (
+        <div className="row mb-3">
+          <div className="col-12">
+            <div className="card">
+              <div className="card-body">
+                <div className="row align-items-center">
+                  <div className="col-sm-6">
+                    <h5 className="mb-0">
+                      <i className="mdi mdi-server me-2"></i>
+                      {host.display_name || host.name}
+                    </h5>
+                    <p className="text-muted mb-0">{host.url}</p>
+                  </div>
+                  <div className="col-sm-6 text-sm-end">
+                    <span className={`badge bg-${host.status === 'healthy' ? 'success' : host.status === 'unhealthy' ? 'danger' : 'warning'} p-2`}>
+                      <i className={`mdi mdi-circle me-1`}></i>
+                      {host.status.toUpperCase()}
+                    </span>
+                    {host.is_default && (
+                      <span className="badge bg-info ms-2 p-2">DEFAULT</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       
       <div className="row">
         {/* System Information Card */}
@@ -64,7 +94,7 @@ export default function HostSystem() {
                   <tbody>
                     <tr>
                       <td className="fw-medium">Operating System</td>
-                      <td>{systemInfo?.operating_system}</td>
+                      <td>{systemInfo?.os}</td>
                     </tr>
                     <tr>
                       <td className="fw-medium">Architecture</td>
@@ -76,15 +106,11 @@ export default function HostSystem() {
                     </tr>
                     <tr>
                       <td className="fw-medium">CPUs</td>
-                      <td>{systemInfo?.ncpu}</td>
+                      <td>{systemInfo?.cpu_count}</td>
                     </tr>
                     <tr>
                       <td className="fw-medium">Total Memory</td>
-                      <td>{systemInfo?.mem_total ? formatBytes(systemInfo.mem_total) : '-'}</td>
-                    </tr>
-                    <tr>
-                      <td className="fw-medium">Docker Root Dir</td>
-                      <td>{systemInfo?.docker_root_dir}</td>
+                      <td>{systemInfo?.memory_total ? formatBytes(systemInfo.memory_total) : '-'}</td>
                     </tr>
                     <tr>
                       <td className="fw-medium">Storage Driver</td>
@@ -107,27 +133,27 @@ export default function HostSystem() {
                   <tbody>
                     <tr>
                       <td className="fw-medium">Docker Version</td>
-                      <td>{systemVersion?.version}</td>
+                      <td>{systemInfo?.docker_version || systemVersion?.Version}</td>
                     </tr>
                     <tr>
                       <td className="fw-medium">API Version</td>
-                      <td>{systemVersion?.api_version}</td>
+                      <td>{systemInfo?.api_version || systemVersion?.ApiVersion}</td>
                     </tr>
                     <tr>
                       <td className="fw-medium">Min API Version</td>
-                      <td>{systemVersion?.min_api_version}</td>
+                      <td>{systemVersion?.MinAPIVersion || '-'}</td>
                     </tr>
                     <tr>
                       <td className="fw-medium">Go Version</td>
-                      <td>{systemVersion?.go_version}</td>
+                      <td>{systemVersion?.GoVersion || '-'}</td>
                     </tr>
                     <tr>
                       <td className="fw-medium">Git Commit</td>
-                      <td><code>{systemVersion?.git_commit}</code></td>
+                      <td><code>{systemVersion?.GitCommit || '-'}</code></td>
                     </tr>
                     <tr>
                       <td className="fw-medium">Build Time</td>
-                      <td>{systemVersion?.build_time}</td>
+                      <td>{systemVersion?.BuildTime || '-'}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -175,12 +201,12 @@ export default function HostSystem() {
                   <div className="d-flex justify-content-between mb-2">
                     <span>Total Size</span>
                     <span className="fw-bold">
-                      {formatBytes(diskUsage.images.reduce((acc, img) => acc + img.size, 0))}
+                      {formatBytes(diskUsage.images?.size || 0)}
                     </span>
                   </div>
                   <div className="d-flex justify-content-between">
                     <span>Layers Size</span>
-                    <span className="fw-bold">{formatBytes(diskUsage.layers_size)}</span>
+                    <span className="fw-bold">{formatBytes(diskUsage.layers_size || 0)}</span>
                   </div>
                 </>
               )}
@@ -198,28 +224,60 @@ export default function HostSystem() {
                   <div className="d-flex justify-content-between mb-2">
                     <span>Volumes</span>
                     <span className="fw-bold">
-                      {diskUsage.volumes.length} ({formatBytes(
-                        diskUsage.volumes.reduce((acc, vol) => acc + vol.size, 0)
-                      )})
+                      {diskUsage.volumes?.count || 0} ({formatBytes(diskUsage.volumes?.size || 0)})
                     </span>
                   </div>
                   <div className="d-flex justify-content-between mb-2">
-                    <span>Build Cache</span>
-                    <span className="fw-bold">-</span>
+                    <span>Containers</span>
+                    <span className="fw-bold">
+                      {diskUsage.containers?.count || 0} ({formatBytes(diskUsage.containers?.size || 0)})
+                    </span>
                   </div>
                   <div className="d-flex justify-content-between">
                     <span className="text-info">Total</span>
                     <span className="fw-bold text-info">
                       {formatBytes(
-                        diskUsage.layers_size +
-                        diskUsage.images.reduce((acc, img) => acc + img.size, 0) +
-                        diskUsage.volumes.reduce((acc, vol) => acc + vol.size, 0) +
-                        diskUsage.containers.reduce((acc, cnt) => acc + cnt.size_rw, 0)
+                        (diskUsage.layers_size || 0) +
+                        (diskUsage.images?.size || 0) +
+                        (diskUsage.volumes?.size || 0) +
+                        (diskUsage.containers?.size || 0)
                       )}
                     </span>
                   </div>
                 </>
               )}
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      {/* Quick Actions */}
+      <div className="row mt-3">
+        <div className="col-12">
+          <div className="card">
+            <div className="card-body">
+              <h5 className="card-title mb-3">Quick Actions</h5>
+              <div className="d-flex gap-2 flex-wrap">
+                <button 
+                  className="btn btn-warning"
+                  onClick={() => {
+                    if (confirm('Are you sure you want to prune the system? This will remove all stopped containers, dangling images, and unused networks.')) {
+                      // TODO: Implement system prune
+                      alert('System prune functionality to be implemented')
+                    }
+                  }}
+                >
+                  <i className="mdi mdi-broom me-1"></i>
+                  System Prune
+                </button>
+                <button 
+                  className="btn btn-info"
+                  onClick={() => window.location.reload()}
+                >
+                  <i className="mdi mdi-refresh me-1"></i>
+                  Refresh Stats
+                </button>
+              </div>
             </div>
           </div>
         </div>
