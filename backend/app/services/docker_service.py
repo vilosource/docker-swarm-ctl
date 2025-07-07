@@ -158,6 +158,27 @@ class UnifiedDockerService:
     ) -> Dict[str, Any]:
         """Inspect a container"""
         return await self._executor.inspect_container(container_id, host_id)
+    
+    async def get_system_info(
+        self,
+        host_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Get Docker system information"""
+        return await self._executor.get_system_info(host_id)
+    
+    async def get_disk_usage(
+        self,
+        host_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Get disk usage information"""
+        return await self._executor.get_disk_usage(host_id)
+    
+    async def get_version(
+        self,
+        host_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Get Docker version information"""
+        return await self._executor.get_version(host_id)
 
 
 class DockerServiceFactory:

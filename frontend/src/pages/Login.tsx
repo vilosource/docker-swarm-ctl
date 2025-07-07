@@ -32,7 +32,10 @@ export default function Login() {
           <div className="col-md-8 col-lg-6 col-xl-4">
             <div className="text-center">
               <a href="/">
-                <img src="/assets/images/logo-dark.png" alt="" height="22" className="mx-auto" />
+                <div className="d-inline-flex align-items-center">
+                  <i className="mdi mdi-docker" style={{ fontSize: '36px', color: '#2196F3' }}></i>
+                  <span style={{ fontSize: '24px', fontWeight: 'bold', marginLeft: '10px' }}>Docker CTL</span>
+                </div>
               </a>
               <p className="text-muted mt-2 mb-4">Docker Control Platform</p>
             </div>

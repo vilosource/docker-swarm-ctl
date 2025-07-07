@@ -349,3 +349,12 @@ class DockerOperationExecutor:
         """Ping Docker daemon"""
         async with self._get_client_context(host_id) as (client, resolved_host_id):
             return client.ping()
+    
+    @docker_operation("get_disk_usage")
+    async def get_disk_usage(
+        self,
+        host_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Get disk usage information from Docker"""
+        async with self._get_client_context(host_id) as (client, resolved_host_id):
+            return client.df()
