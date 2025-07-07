@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
+import { ReactNode } from 'react'
 import PageTitle from '@/components/common/PageTitle'
 import { dashboardApi, DashboardData } from '@/api/dashboard'
 import { HostHealthIndicator } from '@/components/common/HostHealthIndicator'
@@ -61,13 +62,31 @@ export default function Dashboard() {
     },
   ]
 
-  const resourceStats = [
+  const resourceStats: Array<{
+    label: string
+    value: number
+    icon: string
+    color: string
+    detail?: ReactNode
+  }> = [
     { 
-      label: 'Total Containers', 
+      label: 'Containers', 
       value: dashboard.resources.containers.total, 
       icon: 'mdi mdi-docker',
       color: 'info',
-      detail: `${dashboard.resources.containers.running} running`
+      detail: (
+        <div className="d-flex align-items-center gap-2">
+          <span className="text-success">
+            <i className="mdi mdi-play-circle me-1"></i>
+            {dashboard.resources.containers.running}
+          </span>
+          <span className="text-muted">/</span>
+          <span className="text-danger">
+            <i className="mdi mdi-stop-circle me-1"></i>
+            {dashboard.resources.containers.stopped}
+          </span>
+        </div>
+      )
     },
     { 
       label: 'Images', 
@@ -162,7 +181,13 @@ export default function Dashboard() {
                     <span className="text-muted text-uppercase fs-12 fw-bold">{stat.label}</span>
                     <h3 className="mb-0">{stat.value}</h3>
                     {stat.detail && (
-                      <p className="text-muted mb-0 fs-13">{stat.detail}</p>
+                      <div className="mt-1">
+                        {typeof stat.detail === 'string' ? (
+                          <p className="text-muted mb-0 fs-13">{stat.detail}</p>
+                        ) : (
+                          stat.detail
+                        )}
+                      </div>
                     )}
                   </div>
                   <div className="align-self-center flex-shrink-0">
