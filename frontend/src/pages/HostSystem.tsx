@@ -85,8 +85,8 @@ export default function HostSystem() {
       
       <div className="row">
         {/* System Information Card */}
-        <div className="col-xl-6">
-          <div className="card">
+        <div className="col-xl-6 mb-3">
+          <div className="card h-100">
             <div className="card-body">
               <h5 className="card-title mb-3">System Information</h5>
               <div className="table-responsive">
@@ -124,8 +124,8 @@ export default function HostSystem() {
         </div>
         
         {/* Docker Version Card */}
-        <div className="col-xl-6">
-          <div className="card">
+        <div className="col-xl-6 mb-3">
+          <div className="card h-100">
             <div className="card-body">
               <h5 className="card-title mb-3">Docker Version</h5>
               <div className="table-responsive">
@@ -161,91 +161,102 @@ export default function HostSystem() {
             </div>
           </div>
         </div>
-        
+      </div>
+      
+      {/* Stats Row */}
+      <div className="row">
         {/* Container Stats Card */}
-        <div className="col-xl-4">
-          <div className="card">
-            <div className="card-body">
+        <div className="col-xl-4 mb-3">
+          <div className="card h-100">
+            <div className="card-body d-flex flex-column">
               <h5 className="card-title mb-3">Containers</h5>
-              <div className="d-flex justify-content-between mb-2">
-                <span>Total</span>
-                <span className="fw-bold">{systemInfo?.containers || 0}</span>
-              </div>
-              <div className="d-flex justify-content-between mb-2">
-                <span className="text-success">Running</span>
-                <span className="fw-bold text-success">{systemInfo?.containers_running || 0}</span>
-              </div>
-              <div className="d-flex justify-content-between mb-2">
-                <span className="text-warning">Paused</span>
-                <span className="fw-bold text-warning">{systemInfo?.containers_paused || 0}</span>
-              </div>
-              <div className="d-flex justify-content-between">
-                <span className="text-danger">Stopped</span>
-                <span className="fw-bold text-danger">{systemInfo?.containers_stopped || 0}</span>
+              <div className="flex-grow-1">
+                <div className="d-flex justify-content-between mb-2">
+                  <span>Total</span>
+                  <span className="fw-bold">{systemInfo?.containers || 0}</span>
+                </div>
+                <div className="d-flex justify-content-between mb-2">
+                  <span className="text-success">Running</span>
+                  <span className="fw-bold text-success">{systemInfo?.containers_running || 0}</span>
+                </div>
+                <div className="d-flex justify-content-between mb-2">
+                  <span className="text-warning">Paused</span>
+                  <span className="fw-bold text-warning">{systemInfo?.containers_paused || 0}</span>
+                </div>
+                <div className="d-flex justify-content-between">
+                  <span className="text-danger">Stopped</span>
+                  <span className="fw-bold text-danger">{systemInfo?.containers_stopped || 0}</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
         
         {/* Image Stats Card */}
-        <div className="col-xl-4">
-          <div className="card">
-            <div className="card-body">
+        <div className="col-xl-4 mb-3">
+          <div className="card h-100">
+            <div className="card-body d-flex flex-column">
               <h5 className="card-title mb-3">Images</h5>
-              <div className="d-flex justify-content-between mb-2">
-                <span>Total Images</span>
-                <span className="fw-bold">{systemInfo?.images || 0}</span>
+              <div className="flex-grow-1">
+                <div className="d-flex justify-content-between mb-2">
+                  <span>Total Images</span>
+                  <span className="fw-bold">{systemInfo?.images || 0}</span>
+                </div>
+                {diskUsage && (
+                  <>
+                    <div className="d-flex justify-content-between mb-2">
+                      <span>Total Size</span>
+                      <span className="fw-bold">
+                        {formatBytes(diskUsage.images?.size || 0)}
+                      </span>
+                    </div>
+                    <div className="d-flex justify-content-between">
+                      <span>Layers Size</span>
+                      <span className="fw-bold">{formatBytes(diskUsage.layers_size || 0)}</span>
+                    </div>
+                  </>
+                )}
               </div>
-              {diskUsage && (
-                <>
-                  <div className="d-flex justify-content-between mb-2">
-                    <span>Total Size</span>
-                    <span className="fw-bold">
-                      {formatBytes(diskUsage.images?.size || 0)}
-                    </span>
-                  </div>
-                  <div className="d-flex justify-content-between">
-                    <span>Layers Size</span>
-                    <span className="fw-bold">{formatBytes(diskUsage.layers_size || 0)}</span>
-                  </div>
-                </>
-              )}
             </div>
           </div>
         </div>
         
         {/* Disk Usage Card */}
-        <div className="col-xl-4">
-          <div className="card">
-            <div className="card-body">
+        <div className="col-xl-4 mb-3">
+          <div className="card h-100">
+            <div className="card-body d-flex flex-column">
               <h5 className="card-title mb-3">Disk Usage</h5>
-              {diskUsage && (
-                <>
-                  <div className="d-flex justify-content-between mb-2">
-                    <span>Volumes</span>
-                    <span className="fw-bold">
-                      {diskUsage.volumes?.count || 0} ({formatBytes(diskUsage.volumes?.size || 0)})
-                    </span>
-                  </div>
-                  <div className="d-flex justify-content-between mb-2">
-                    <span>Containers</span>
-                    <span className="fw-bold">
-                      {diskUsage.containers?.count || 0} ({formatBytes(diskUsage.containers?.size || 0)})
-                    </span>
-                  </div>
-                  <div className="d-flex justify-content-between">
-                    <span className="text-info">Total</span>
-                    <span className="fw-bold text-info">
-                      {formatBytes(
-                        (diskUsage.layers_size || 0) +
-                        (diskUsage.images?.size || 0) +
-                        (diskUsage.volumes?.size || 0) +
-                        (diskUsage.containers?.size || 0)
-                      )}
-                    </span>
-                  </div>
-                </>
-              )}
+              <div className="flex-grow-1">
+                {diskUsage ? (
+                  <>
+                    <div className="d-flex justify-content-between mb-2">
+                      <span>Volumes</span>
+                      <span className="fw-bold">
+                        {diskUsage.volumes?.count || 0} ({formatBytes(diskUsage.volumes?.size || 0)})
+                      </span>
+                    </div>
+                    <div className="d-flex justify-content-between mb-2">
+                      <span>Containers</span>
+                      <span className="fw-bold">
+                        {diskUsage.containers?.count || 0} ({formatBytes(diskUsage.containers?.size || 0)})
+                      </span>
+                    </div>
+                    <div className="d-flex justify-content-between">
+                      <span className="text-info">Total</span>
+                      <span className="fw-bold text-info">
+                        {formatBytes(
+                          (diskUsage.layers_size || 0) +
+                          (diskUsage.images?.size || 0) +
+                          (diskUsage.volumes?.size || 0) +
+                          (diskUsage.containers?.size || 0)
+                        )}
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-muted">Loading...</div>
+                )}
+              </div>
             </div>
           </div>
         </div>
