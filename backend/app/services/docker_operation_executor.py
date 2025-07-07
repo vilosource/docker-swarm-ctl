@@ -358,3 +358,138 @@ class DockerOperationExecutor:
         """Get disk usage information from Docker"""
         async with self._get_client_context(host_id) as (client, resolved_host_id):
             return client.df()
+    
+    # Volume operations
+    @docker_operation("list_volumes")
+    async def list_volumes(
+        self,
+        filters: Optional[Dict[str, Any]] = None,
+        host_id: Optional[str] = None
+    ) -> List[Any]:
+        """List volumes"""
+        async with self._get_client_context(host_id) as (client, resolved_host_id):
+            return client.volumes.list(filters=filters)
+    
+    @docker_operation("create_volume")
+    async def create_volume(
+        self,
+        name: Optional[str] = None,
+        driver: str = "local",
+        driver_opts: Optional[Dict[str, str]] = None,
+        labels: Optional[Dict[str, str]] = None,
+        host_id: Optional[str] = None
+    ) -> Any:
+        """Create a volume"""
+        async with self._get_client_context(host_id) as (client, resolved_host_id):
+            return client.volumes.create(
+                name=name,
+                driver=driver,
+                driver_opts=driver_opts,
+                labels=labels
+            )
+    
+    @docker_operation("get_volume")
+    async def get_volume(
+        self,
+        volume_id: str,
+        host_id: Optional[str] = None
+    ) -> Any:
+        """Get a volume"""
+        async with self._get_client_context(host_id) as (client, resolved_host_id):
+            return client.volumes.get(volume_id)
+    
+    @docker_operation("remove_volume")
+    async def remove_volume(
+        self,
+        volume_id: str,
+        force: bool = False,
+        host_id: Optional[str] = None
+    ) -> None:
+        """Remove a volume"""
+        async with self._get_client_context(host_id) as (client, resolved_host_id):
+            volume = client.volumes.get(volume_id)
+            volume.remove(force=force)
+    
+    @docker_operation("prune_volumes")
+    async def prune_volumes(
+        self,
+        filters: Optional[Dict[str, Any]] = None,
+        host_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Prune unused volumes"""
+        async with self._get_client_context(host_id) as (client, resolved_host_id):
+            return client.volumes.prune(filters=filters)
+    
+    # Network operations
+    @docker_operation("list_networks")
+    async def list_networks(
+        self,
+        names: Optional[List[str]] = None,
+        ids: Optional[List[str]] = None,
+        filters: Optional[Dict[str, Any]] = None,
+        host_id: Optional[str] = None
+    ) -> List[Any]:
+        """List networks"""
+        async with self._get_client_context(host_id) as (client, resolved_host_id):
+            return client.networks.list(names=names, ids=ids, filters=filters)
+    
+    @docker_operation("create_network")
+    async def create_network(
+        self,
+        name: str,
+        driver: Optional[str] = None,
+        options: Optional[Dict[str, str]] = None,
+        ipam: Optional[Dict[str, Any]] = None,
+        check_duplicate: bool = True,
+        internal: bool = False,
+        labels: Optional[Dict[str, str]] = None,
+        enable_ipv6: bool = False,
+        attachable: bool = True,
+        scope: Optional[str] = None,
+        host_id: Optional[str] = None
+    ) -> Any:
+        """Create a network"""
+        async with self._get_client_context(host_id) as (client, resolved_host_id):
+            return client.networks.create(
+                name=name,
+                driver=driver,
+                options=options,
+                ipam=ipam,
+                check_duplicate=check_duplicate,
+                internal=internal,
+                labels=labels,
+                enable_ipv6=enable_ipv6,
+                attachable=attachable,
+                scope=scope
+            )
+    
+    @docker_operation("get_network")
+    async def get_network(
+        self,
+        network_id: str,
+        host_id: Optional[str] = None
+    ) -> Any:
+        """Get a network"""
+        async with self._get_client_context(host_id) as (client, resolved_host_id):
+            return client.networks.get(network_id)
+    
+    @docker_operation("remove_network")
+    async def remove_network(
+        self,
+        network_id: str,
+        host_id: Optional[str] = None
+    ) -> None:
+        """Remove a network"""
+        async with self._get_client_context(host_id) as (client, resolved_host_id):
+            network = client.networks.get(network_id)
+            network.remove()
+    
+    @docker_operation("prune_networks")
+    async def prune_networks(
+        self,
+        filters: Optional[Dict[str, Any]] = None,
+        host_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Prune unused networks"""
+        async with self._get_client_context(host_id) as (client, resolved_host_id):
+            return client.networks.prune(filters=filters)

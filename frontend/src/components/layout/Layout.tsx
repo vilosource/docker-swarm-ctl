@@ -233,7 +233,7 @@ export default function Layout() {
               
               {/* All Hosts Section */}
               <li className="menu-title mt-2">Resources</li>
-              <li className={location.pathname.startsWith('/containers') || location.pathname.startsWith('/images') ? 'menuitem-active' : ''}>
+              <li className={location.pathname.startsWith('/containers') || location.pathname.startsWith('/images') || location.pathname.startsWith('/volumes') || location.pathname.startsWith('/networks') ? 'menuitem-active' : ''}>
                 <a
                   href="#"
                   className={`has-arrow ${expandedSections.includes('all-hosts') ? '' : 'collapsed'}`}
@@ -261,6 +261,18 @@ export default function Layout() {
                     <Link to="/images" className={location.pathname === '/images' ? 'active' : ''}>
                       <i className="mdi mdi-layers"></i>
                       <span>Images</span>
+                    </Link>
+                  </li>
+                  <li className={location.pathname === '/volumes' ? 'menuitem-active' : ''}>
+                    <Link to="/volumes" className={location.pathname === '/volumes' ? 'active' : ''}>
+                      <i className="mdi mdi-database"></i>
+                      <span>Volumes</span>
+                    </Link>
+                  </li>
+                  <li className={location.pathname === '/networks' ? 'menuitem-active' : ''}>
+                    <Link to="/networks" className={location.pathname === '/networks' ? 'active' : ''}>
+                      <i className="mdi mdi-lan"></i>
+                      <span>Networks</span>
                     </Link>
                   </li>
                 </ul>

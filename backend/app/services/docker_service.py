@@ -179,6 +179,106 @@ class UnifiedDockerService:
     ) -> Dict[str, Any]:
         """Get Docker version information"""
         return await self._executor.get_version(host_id)
+    
+    # Volume operations
+    async def list_volumes(
+        self,
+        filters: Optional[Dict[str, Any]] = None,
+        host_id: Optional[str] = None
+    ) -> List[Any]:
+        """List volumes"""
+        return await self._executor.list_volumes(filters, host_id)
+    
+    async def create_volume(
+        self,
+        name: Optional[str] = None,
+        driver: str = "local",
+        driver_opts: Optional[Dict[str, str]] = None,
+        labels: Optional[Dict[str, str]] = None,
+        host_id: Optional[str] = None
+    ) -> Any:
+        """Create a volume"""
+        return await self._executor.create_volume(name, driver, driver_opts, labels, host_id)
+    
+    async def get_volume(
+        self,
+        volume_id: str,
+        host_id: Optional[str] = None
+    ) -> Any:
+        """Get a volume"""
+        return await self._executor.get_volume(volume_id, host_id)
+    
+    async def remove_volume(
+        self,
+        volume_id: str,
+        force: bool = False,
+        host_id: Optional[str] = None
+    ) -> None:
+        """Remove a volume"""
+        await self._executor.remove_volume(volume_id, force, host_id)
+    
+    async def prune_volumes(
+        self,
+        filters: Optional[Dict[str, Any]] = None,
+        host_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Prune unused volumes"""
+        return await self._executor.prune_volumes(filters, host_id)
+    
+    # Network operations
+    async def list_networks(
+        self,
+        names: Optional[List[str]] = None,
+        ids: Optional[List[str]] = None,
+        filters: Optional[Dict[str, Any]] = None,
+        host_id: Optional[str] = None
+    ) -> List[Any]:
+        """List networks"""
+        return await self._executor.list_networks(names, ids, filters, host_id)
+    
+    async def create_network(
+        self,
+        name: str,
+        driver: Optional[str] = None,
+        options: Optional[Dict[str, str]] = None,
+        ipam: Optional[Dict[str, Any]] = None,
+        check_duplicate: bool = True,
+        internal: bool = False,
+        labels: Optional[Dict[str, str]] = None,
+        enable_ipv6: bool = False,
+        attachable: bool = True,
+        scope: Optional[str] = None,
+        host_id: Optional[str] = None
+    ) -> Any:
+        """Create a network"""
+        return await self._executor.create_network(
+            name, driver, options, ipam, check_duplicate, 
+            internal, labels, enable_ipv6, attachable, scope, host_id
+        )
+    
+    async def get_network(
+        self,
+        network_id: str,
+        host_id: Optional[str] = None
+    ) -> Any:
+        """Get a network"""
+        return await self._executor.get_network(network_id, host_id)
+    
+    async def remove_network(
+        self,
+        network_id: str,
+        host_id: Optional[str] = None
+    ) -> None:
+        """Remove a network"""
+        await self._executor.remove_network(network_id, host_id)
+    
+    async def prune_networks(
+        self,
+        filters: Optional[Dict[str, Any]] = None,
+        host_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Prune unused networks"""
+        return await self._executor.prune_networks(filters, host_id)
 
 
 class DockerServiceFactory:

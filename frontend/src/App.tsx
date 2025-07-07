@@ -7,6 +7,8 @@ import Dashboard from '@/pages/Dashboard'
 import Containers from '@/pages/Containers'
 import ContainerDetails from '@/pages/ContainerDetails'
 import Images from '@/pages/Images'
+import Volumes from '@/pages/Volumes'
+import Networks from '@/pages/Networks'
 import Users from '@/pages/Users'
 import Hosts from '@/pages/Hosts'
 import Profile from '@/pages/Profile'
@@ -30,6 +32,8 @@ function App() {
           <Route path="/containers/:id" element={<ContainerDetails />} />
           <Route path="/hosts/:hostId/containers/:id" element={<ContainerDetails />} />
           <Route path="/images" element={<Images />} />
+          <Route path="/volumes" element={<Volumes />} />
+          <Route path="/networks" element={<Networks />} />
           <Route path="/users" element={<Users />} />
           <Route path="/hosts" element={<Hosts />} />
           <Route path="/hosts/:hostId/containers" element={<HostContainers />} />
