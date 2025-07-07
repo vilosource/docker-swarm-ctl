@@ -131,7 +131,7 @@ export default function Dashboard() {
       <div className="row">
         {hostStats.map((stat) => (
           <div key={stat.label} className="col-md-6 col-xl-3">
-            <div className="card">
+            <div className="card h-100">
               <div className="card-body">
                 <div className="d-flex">
                   <div className="flex-grow-1">
@@ -155,9 +155,9 @@ export default function Dashboard() {
       <div className="row">
         {resourceStats.map((stat) => (
           <div key={stat.label} className="col-md-6 col-xl-3">
-            <div className="card">
-              <div className="card-body">
-                <div className="d-flex">
+            <div className="card h-100">
+              <div className="card-body d-flex align-items-center">
+                <div className="d-flex w-100">
                   <div className="flex-grow-1">
                     <span className="text-muted text-uppercase fs-12 fw-bold">{stat.label}</span>
                     <h3 className="mb-0">{stat.value}</h3>
