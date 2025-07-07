@@ -19,6 +19,11 @@ from app.core.exceptions import DockerConnectionError, ValidationError
 from app.core.logging import logger
 
 
+async def get_host_service(db: AsyncSession) -> "HostService":
+    """Get host service instance"""
+    return HostService(db)
+
+
 class HostService:
     """Service layer for Docker host operations"""
     
