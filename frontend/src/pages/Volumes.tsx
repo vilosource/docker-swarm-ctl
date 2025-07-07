@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import PageTitle from '@/components/common/PageTitle'
 import { volumesApi } from '@/api/volumes'
 import { hostsApi } from '@/api/hosts'
@@ -11,6 +11,7 @@ import { Volume } from '@/types/volume'
 export default function Volumes() {
   const [searchParams] = useSearchParams()
   const hostId = searchParams.get('host_id')
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [selectedVolumes, setSelectedVolumes] = useState<Set<string>>(new Set())
 
@@ -120,28 +121,31 @@ export default function Volumes() {
       />
 
       {/* Host Filter */}
-      {!hostId && hosts.length > 1 && (
+      {hosts.length > 0 && (
         <div className="card mb-3">
           <div className="card-body">
             <div className="d-flex align-items-center gap-3">
-              <label className="mb-0">Filter by host:</label>
-              <div className="btn-group btn-group-sm">
-                <Link 
-                  to="/volumes"
-                  className="btn btn-outline-primary active"
-                >
-                  All Hosts
-                </Link>
+              <label className="mb-0" htmlFor="hostFilter">Filter by host:</label>
+              <select 
+                id="hostFilter"
+                className="form-select form-select-sm" 
+                style={{ width: 'auto' }}
+                value={hostId || ''}
+                onChange={(e) => {
+                  if (e.target.value) {
+                    navigate(`/volumes?host_id=${e.target.value}`)
+                  } else {
+                    navigate('/volumes')
+                  }
+                }}
+              >
+                <option value="">All Hosts</option>
                 {hosts.map(host => (
-                  <Link
-                    key={host.id}
-                    to={`/volumes?host_id=${host.id}`}
-                    className="btn btn-outline-primary"
-                  >
+                  <option key={host.id} value={host.id}>
                     {host.display_name || host.name}
-                  </Link>
+                  </option>
                 ))}
-              </div>
+              </select>
             </div>
           </div>
         </div>
