@@ -31,6 +31,10 @@ export default function HostVolumes() {
       queryClient.invalidateQueries({ queryKey: ['volumes', hostId] })
       setShowCreateModal(false)
     },
+    onError: (error: any) => {
+      console.error('Failed to create volume:', error)
+      alert(error.response?.data?.detail || 'Failed to create volume')
+    }
   })
 
   const deleteVolumeMutation = useMutation({
@@ -48,20 +52,106 @@ export default function HostVolumes() {
 
   if (isLoading) {
     return (
-      <div className="text-center py-4">
-        <div className="spinner-border text-primary" role="status">
-          <span className="visually-hidden">Loading...</span>
+      <>
+        <PageTitle 
+          title="Volumes" 
+          breadcrumb={[
+            { title: 'Hosts', href: '/hosts' },
+            { title: 'Loading...', href: '#' },
+            { title: 'Volumes' }
+          ]}
+        />
+        <div className="text-center py-4">
+          <div className="spinner-border text-primary" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
         </div>
-      </div>
+      </>
     )
   }
 
   if (error) {
     return (
-      <div className="alert alert-danger">
-        <i className="mdi mdi-alert-circle me-2"></i>
-        Error loading volumes
-      </div>
+      <>
+        <PageTitle 
+          title="Volumes" 
+          breadcrumb={[
+            { title: 'Hosts', href: '/hosts' },
+            { title: host?.display_name || host?.name || 'Host', href: `/hosts/${hostId}/system` },
+            { title: 'Volumes' }
+          ]}
+        />
+        <div className="alert alert-danger">
+          <i className="mdi mdi-alert-circle me-2"></i>
+          Error loading volumes
+        </div>
+        
+        {/* Create Volume Modal */}
+        {showCreateModal && (
+          <>
+            <div className="modal-backdrop fade show"></div>
+            <div className="modal fade show d-block" tabIndex={-1}>
+              <div className="modal-dialog">
+                <div className="modal-content">
+                  <div className="modal-header">
+                    <h5 className="modal-title">Create Volume</h5>
+                    <button
+                      type="button"
+                      className="btn-close"
+                      onClick={() => setShowCreateModal(false)}
+                    ></button>
+                  </div>
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault()
+                      const formData = new FormData(e.currentTarget)
+                      createVolumeMutation.mutate({
+                        name: formData.get('name') as string,
+                        driver: formData.get('driver') as string || 'local',
+                      })
+                    }}
+                  >
+                    <div className="modal-body">
+                      <div className="mb-3">
+                        <label className="form-label">Volume Name</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          name="name"
+                          required
+                          placeholder="my-volume"
+                        />
+                      </div>
+                      <div className="mb-3">
+                        <label className="form-label">Driver</label>
+                        <select className="form-select" name="driver">
+                          <option value="local">local</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="modal-footer">
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={() => setShowCreateModal(false)}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        className="btn btn-primary"
+                        disabled={createVolumeMutation.isPending}
+                      >
+                        {createVolumeMutation.isPending ? 'Creating...' : 'Create'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+      </>
     )
   }
 
@@ -74,20 +164,27 @@ export default function HostVolumes() {
           { title: host?.display_name || host?.name || 'Host', href: `/hosts/${hostId}/system` },
           { title: 'Volumes' }
         ]}
-        actions={
-          <button
-            className="btn btn-primary"
-            onClick={() => setShowCreateModal(true)}
-          >
-            <i className="mdi mdi-plus-circle me-1"></i>
-            Create Volume
-          </button>
-        }
       />
 
       {/* Volumes Table */}
       <div className="card">
         <div className="card-body">
+          <div className="row mb-2">
+            <div className="col-sm-8">
+              <h5 className="card-title">Volumes</h5>
+            </div>
+            <div className="col-sm-4">
+              <div className="text-sm-end">
+                <button
+                  onClick={() => setShowCreateModal(true)}
+                  className="btn btn-primary mb-2"
+                >
+                  <i className="mdi mdi-plus-circle me-2"></i> Create Volume
+                </button>
+              </div>
+            </div>
+          </div>
+          
           {volumes.length === 0 ? (
             <div className="text-center py-4 text-muted">
               <i className="mdi mdi-database font-24 mb-3 d-block"></i>

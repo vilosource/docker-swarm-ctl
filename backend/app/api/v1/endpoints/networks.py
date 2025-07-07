@@ -43,9 +43,9 @@ def format_network(network_data) -> NetworkResponse:
         Internal=network_data.internal,
         Attachable=network_data.attachable,
         Ingress=network_data.ingress,
-        Containers=network_data.containers,
-        Options=network_data.options,
-        Labels=network_data.labels,
+        Containers=network_data.containers or {},  # Handle None containers
+        Options=network_data.options or {},  # Handle None options
+        Labels=network_data.labels or {},  # Handle None labels
         Created=network_data.created,
         EnableIPv6=network_data.enable_ipv6,
         host_id=network_data.host_id,

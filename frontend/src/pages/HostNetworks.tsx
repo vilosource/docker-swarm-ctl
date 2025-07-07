@@ -31,6 +31,10 @@ export default function HostNetworks() {
       queryClient.invalidateQueries({ queryKey: ['networks', hostId] })
       setShowCreateModal(false)
     },
+    onError: (error: any) => {
+      console.error('Failed to create network:', error)
+      alert(error.response?.data?.detail || 'Failed to create network')
+    }
   })
 
   const deleteNetworkMutation = useMutation({
@@ -52,20 +56,40 @@ export default function HostNetworks() {
 
   if (isLoading) {
     return (
-      <div className="text-center py-4">
-        <div className="spinner-border text-primary" role="status">
-          <span className="visually-hidden">Loading...</span>
+      <>
+        <PageTitle 
+          title="Networks" 
+          breadcrumb={[
+            { title: 'Hosts', href: '/hosts' },
+            { title: 'Loading...', href: '#' },
+            { title: 'Networks' }
+          ]}
+        />
+        <div className="text-center py-4">
+          <div className="spinner-border text-primary" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
         </div>
-      </div>
+      </>
     )
   }
 
   if (error) {
     return (
-      <div className="alert alert-danger">
-        <i className="mdi mdi-alert-circle me-2"></i>
-        Error loading networks
-      </div>
+      <>
+        <PageTitle 
+          title="Networks" 
+          breadcrumb={[
+            { title: 'Hosts', href: '/hosts' },
+            { title: host?.display_name || host?.name || 'Host', href: `/hosts/${hostId}/system` },
+            { title: 'Networks' }
+          ]}
+        />
+        <div className="alert alert-danger">
+          <i className="mdi mdi-alert-circle me-2"></i>
+          Error loading networks
+        </div>
+      </>
     )
   }
 
@@ -78,20 +102,27 @@ export default function HostNetworks() {
           { title: host?.display_name || host?.name || 'Host', href: `/hosts/${hostId}/system` },
           { title: 'Networks' }
         ]}
-        actions={
-          <button
-            className="btn btn-primary"
-            onClick={() => setShowCreateModal(true)}
-          >
-            <i className="mdi mdi-plus-circle me-1"></i>
-            Create Network
-          </button>
-        }
       />
 
       {/* Networks Table */}
       <div className="card">
         <div className="card-body">
+          <div className="row mb-2">
+            <div className="col-sm-8">
+              <h5 className="card-title">Networks</h5>
+            </div>
+            <div className="col-sm-4">
+              <div className="text-sm-end">
+                <button
+                  onClick={() => setShowCreateModal(true)}
+                  className="btn btn-primary mb-2"
+                >
+                  <i className="mdi mdi-plus-circle me-2"></i> Create Network
+                </button>
+              </div>
+            </div>
+          </div>
+          
           {networks.length === 0 ? (
             <div className="text-center py-4 text-muted">
               <i className="mdi mdi-lan font-24 mb-3 d-block"></i>

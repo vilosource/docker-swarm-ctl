@@ -39,9 +39,9 @@ def format_volume(volume_data) -> VolumeResponse:
         mountpoint=volume_data.mountpoint,
         created_at=volume_data.created_at,
         status=volume_data.status,
-        labels=volume_data.labels,
+        labels=volume_data.labels or {},  # Handle None labels
         scope=volume_data.scope,
-        options=volume_data.options,
+        options=volume_data.options or {},  # Handle None options
         host_id=volume_data.host_id,
         host_name=None  # TODO: Add host name to VolumeData if needed
     )

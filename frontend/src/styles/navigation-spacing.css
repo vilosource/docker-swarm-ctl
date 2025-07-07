@@ -23,17 +23,10 @@
 #side-menu .nav-second-level > li > a,
 #side-menu ul.nav-second-level li a,
 .nav-second-level li a {
-  padding: 8px 15px 8px 20px !important;
+  padding: 8px 15px 8px 40px !important;
   min-height: auto !important;
 }
 
-/* Special styling for Docker hosts submenus */
-#side-menu .docker-hosts-nav-second-level > li > a,
-#side-menu ul.docker-hosts-nav-second-level li a,
-.docker-hosts-nav-second-level li a {
-  padding: 8px 15px 8px 15px !important;
-  min-height: auto !important;
-}
 
 /* Reduce margin between menu items */
 #sidebar-menu > ul > li,
@@ -98,7 +91,7 @@
 .nav-second-level {
   padding-top: 0 !important;
   padding-bottom: 0 !important;
-  padding-left: 20px !important;
+  padding-left: 0 !important;
 }
 
 /* Reduce icon size slightly for better proportions */
@@ -122,8 +115,7 @@ html[data-sidebar-size=condensed] .left-side-menu #sidebar-menu > ul > li > a {
 }
 
 /* Ensure proper spacing in expanded hosts menu */
-.nav-second-level.mm-show,
-.docker-hosts-nav-second-level.mm-show {
+.nav-second-level.mm-show {
   padding: 5px 0 !important;
 }
 
@@ -136,21 +128,11 @@ html[data-sidebar-size=condensed] .left-side-menu #sidebar-menu > ul > li > a {
 .metismenu .nav-second-level li a,
 .nav-second-level.mm-show li a,
 .nav-second-level.mm-collapse li a {
-  padding-left: 20px !important;
+  padding-left: 40px !important;
 }
 
 /* Force all submenu items to have consistent padding */
 ul.nav-second-level > li > a {
-  padding-left: 20px !important;
+  padding-left: 40px !important;
 }
 
-/* Docker hosts specific overrides */
-.metismenu .docker-hosts-nav-second-level li a,
-.docker-hosts-nav-second-level.mm-show li a,
-.docker-hosts-nav-second-level.mm-collapse li a {
-  padding-left: 15px !important;
-}
-
-ul.docker-hosts-nav-second-level > li > a {
-  padding-left: 15px !important;
-}

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { DockerHost } from '@/types'
 import { truncateHostname } from '@/utils/format'
@@ -15,7 +15,6 @@ interface NavSubItem {
 
 export default function HostNavItem({ host }: HostNavItemProps) {
   const location = useLocation()
-  const [isExpanded, setIsExpanded] = useState(false)
   
   console.log('[HostNavItem] Rendering host:', host)
   
@@ -27,8 +26,17 @@ export default function HostNavItem({ host }: HostNavItemProps) {
     { name: 'System', href: `/hosts/${host.id}/system`, icon: 'mdi mdi-information-outline' },
   ]
   
-  // Check if any sub-item is active
+  // Check if any sub-item is active (current page is within this host's section)
   const isActive = location.pathname.startsWith(`/hosts/${host.id}`)
+  
+  // Initialize expansion state as collapsed by default
+  const [isExpanded, setIsExpanded] = useState(false)
+  
+  // Update expansion state when location changes
+  useEffect(() => {
+    // Auto-expand if the current page is within this host's section
+    setIsExpanded(isActive)
+  }, [isActive])
   
   // Get host icon based on type
   const getHostIcon = () => {
@@ -60,9 +68,10 @@ export default function HostNavItem({ host }: HostNavItemProps) {
     <li className={isActive ? 'menuitem-active' : ''}>
       <a
         href="#"
-        className={`has-arrow ${isActive ? 'active' : ''}`}
+        className={`has-arrow ${isActive ? 'active' : ''} ${!isExpanded ? 'collapsed' : ''}`}
         onClick={(e) => {
           e.preventDefault()
+          // Toggle expansion state
           setIsExpanded(!isExpanded)
         }}
         aria-expanded={isExpanded}
@@ -74,7 +83,14 @@ export default function HostNavItem({ host }: HostNavItemProps) {
           <i className={`mdi mdi-circle ${getStatusColor()} font-10 ms-2`} style={{ fontSize: '8px' }}></i>
         </span>
       </a>
-      <ul className={`docker-hosts-nav-second-level ${isExpanded ? 'mm-show' : 'mm-collapse'}`}>
+      <ul 
+        className={`nav-second-level ${isExpanded ? 'mm-show' : 'mm-collapse'}`}
+        style={{
+          display: isExpanded ? 'block' : 'none',
+          overflow: 'hidden',
+          transition: 'all 0.3s ease'
+        }}
+      >
         {subItems.map((item) => {
           const itemActive = location.pathname === item.href
           return (
