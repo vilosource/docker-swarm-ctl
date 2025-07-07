@@ -177,38 +177,7 @@ A web-based platform for managing Docker environments, built with FastAPI (backe
 - ⏸️ Administrator guide (README has basics)
 - ✅ Development setup guide (README)
 
-## Phase 2: Multi-Server Support & CLI
-
-### Goals
-- Support multiple Docker hosts from single interface
-- Implement secure server registration and management
-- Create kubectl-like CLI tool
-- Add server health monitoring
-
-### Major Additions
-1. **Server Management**
-   - Server registration with connection details
-   - Encrypted credential storage
-   - Connection pooling per server
-   - Health check scheduling
-   - Server grouping/tagging
-
-2. **CLI Tool (dsctl)**
-   - Multi-context configuration
-   - kubectl-like command structure
-   - Output formatting options
-   - Shell completion
-   - Progress indicators
-
-3. **UI Enhancements**
-   - Server selector
-   - Multi-server dashboard
-   - Server health indicators
-   - Comparative views
-
-### Timeline: 3-4 weeks
-
-## Phase 3: Docker Swarm Support
+## Phase 2: Docker Swarm Support
 
 ### Goals
 - Full Swarm cluster management
@@ -218,25 +187,86 @@ A web-based platform for managing Docker environments, built with FastAPI (backe
 
 ### Major Additions
 1. **Swarm Operations**
-   - Node management
-   - Service lifecycle
-   - Stack deployment
-   - Rolling updates
+   - Node management (list, update, remove)
+   - Service lifecycle (create, update, scale, remove)
+   - Stack deployment (deploy, remove, list)
+   - Rolling updates with health checks
    - Secret/Config management
 
 2. **Visualization**
-   - Cluster topology
-   - Service distribution
-   - Task states
-   - Network overlay view
+   - Cluster topology view
+   - Service distribution across nodes
+   - Task states and health
+   - Network overlay visualization
 
 3. **Advanced Features**
-   - Service scaling
-   - Health monitoring
-   - Log aggregation
-   - Metrics collection
+   - Service scaling (manual and auto-scaling)
+   - Health monitoring and alerts
+   - Log aggregation from services
+   - Metrics collection and dashboards
+
+### Implementation Order
+1. **Node Management**
+   - List nodes with status and availability
+   - Update node labels and availability
+   - Promote/demote managers
+   - Node details and resources
+
+2. **Service Management**
+   - Create service with all options
+   - List services with filters
+   - Update service (image, replicas, constraints)
+   - Scale services
+   - Service logs aggregation
+   - Rolling update monitoring
+
+3. **Stack Management**
+   - Deploy stack from compose file
+   - List stacks and their services
+   - Remove stacks
+   - Stack status monitoring
+
+4. **Secrets and Configs**
+   - Create/list/remove secrets
+   - Create/list/remove configs
+   - Attach to services
 
 ### Timeline: 4-5 weeks
+
+## Phase 3: CLI Tool (dsctl)
+
+### Goals
+- Create kubectl-like CLI tool for Docker management
+- Support all platform features via CLI
+- Enable automation and scripting
+
+### Major Additions
+1. **Core CLI Features**
+   - Multi-context configuration (~/.dsctl/config)
+   - kubectl-like command structure
+   - Output formatting (json, yaml, table)
+   - Shell completion (bash, zsh, fish)
+   - Progress indicators for long operations
+
+2. **Command Structure**
+   ```
+   dsctl get containers/services/nodes
+   dsctl create container/service
+   dsctl delete container/service
+   dsctl logs container/service
+   dsctl exec container
+   dsctl scale service
+   dsctl deploy stack
+   ```
+
+3. **Advanced Features**
+   - Watch mode for real-time updates
+   - Batch operations
+   - Pipeline support
+   - Plugin architecture
+   - Offline mode with cached data
+
+### Timeline: 3-4 weeks
 
 ## Risk Mitigation
 
@@ -277,15 +307,17 @@ A web-based platform for managing Docker environments, built with FastAPI (backe
 - Successful deployment to test environment
 
 ### Phase 2
-- Support for 10+ Docker hosts
-- CLI feature parity with UI
-- < 2s server switch time
-- 90%+ user satisfaction in testing
-
-### Phase 3
 - Full Swarm feature coverage
 - < 5s stack deployment initiation
+- Service scaling and rolling updates
 - Real-time cluster visualization
+- Secrets and configs management
+
+### Phase 3
+- CLI feature parity with UI
+- < 2s command execution time
+- Plugin architecture functional
+- 90%+ user satisfaction in testing
 - Production-ready status
 
 ## Future Considerations
