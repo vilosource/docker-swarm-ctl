@@ -5,6 +5,7 @@ import uuid
 
 from app.db.session import get_db
 from app.core.security import get_current_active_user, require_role
+from app.core.rate_limit import rate_limit
 from app.schemas.image import ImageResponse, ImagePull
 from app.services.docker_client import get_docker_client
 from app.services.audit import AuditService
@@ -35,6 +36,7 @@ async def list_images(
 
 
 @router.post("/pull")
+@rate_limit("10/hour")
 async def pull_image(
     request: Request,
     image_data: ImagePull,
@@ -103,6 +105,7 @@ async def get_image(
 
 
 @router.delete("/{image_id}")
+@rate_limit("30/hour")
 async def remove_image(
     request: Request,
     image_id: str,
@@ -159,6 +162,7 @@ async def get_image_history(
 
 
 @router.post("/prune")
+@rate_limit("5/hour")
 async def prune_images(
     request: Request,
     current_user: User = Depends(require_role("admin")),

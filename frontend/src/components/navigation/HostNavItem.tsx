@@ -44,7 +44,7 @@ export default function HostNavItem({ host }: HostNavItemProps) {
       case 'swarm_manager':
         return host.is_leader ? 'mdi mdi-crown' : 'mdi mdi-shield-star'
       case 'swarm_worker':
-        return 'mdi mdi-worker'
+        return 'mdi mdi-server-network'
       default:
         return 'mdi mdi-server'
     }

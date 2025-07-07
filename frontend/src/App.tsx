@@ -13,6 +13,7 @@ import Users from '@/pages/Users'
 import Hosts from '@/pages/Hosts'
 import Profile from '@/pages/Profile'
 import SystemStats from '@/pages/SystemStats'
+import Events from '@/pages/Events'
 import HostContainers from '@/pages/HostContainers'
 import HostImages from '@/pages/HostImages'
 import HostVolumes from '@/pages/HostVolumes'
@@ -36,6 +37,7 @@ function App() {
           <Route path="/images" element={<Images />} />
           <Route path="/volumes" element={<Volumes />} />
           <Route path="/networks" element={<Networks />} />
+          <Route path="/events" element={<Events />} />
           <Route path="/users" element={<Users />} />
           <Route path="/hosts" element={<Hosts />} />
           <Route path="/hosts/:hostId/containers" element={<HostContainers />} />

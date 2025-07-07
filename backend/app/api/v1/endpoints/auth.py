@@ -12,6 +12,7 @@ from app.core.config import settings
 from app.core.security import create_access_token, create_refresh_token, get_current_active_user
 from app.core.password import verify_password
 from app.core.exceptions import InvalidCredentialsError, TokenInvalidError
+from app.core.rate_limit import auth_limit, rate_limit
 from app.schemas.user import UserLogin, TokenPair, Token
 from app.services.user import UserService
 from app.services.audit import AuditService
@@ -22,6 +23,7 @@ router = APIRouter()
 
 
 @router.post("/login", response_model=TokenPair)
+@auth_limit
 async def login(
     request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
@@ -67,7 +69,9 @@ async def login(
 
 
 @router.post("/refresh", response_model=Token)
+@rate_limit("10/minute")
 async def refresh_token(
+    request: Request,
     refresh_token: str,
     db: AsyncSession = Depends(get_db)
 ):
@@ -111,6 +115,7 @@ async def refresh_token(
 
 
 @router.post("/logout")
+@rate_limit("20/minute")
 async def logout(
     request: Request,
     refresh_token: str,

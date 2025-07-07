@@ -8,6 +8,7 @@ import logging
 from app.core.config import settings
 from app.core.exceptions import AppException
 from app.core.logging_config import setup_logging
+from app.core.rate_limit import configure_rate_limiting
 from app.api.v1.api import api_router
 from app.api.v1.websocket import containers_router as ws_containers_router
 from app.db.session import engine
@@ -44,6 +45,9 @@ app = FastAPI(
     redoc_url=f"{settings.api_v1_str}/redoc",
     lifespan=lifespan
 )
+
+# Configure rate limiting
+configure_rate_limiting(app)
 
 # CORS middleware
 app.add_middleware(
@@ -114,8 +118,9 @@ app.include_router(api_router, prefix=settings.api_v1_str)
 
 # Include WebSocket routers
 app.include_router(ws_containers_router, prefix="/ws", tags=["websocket"])
-from app.api.v1.websocket import exec_router as ws_exec_router
+from app.api.v1.websocket import exec_router as ws_exec_router, events_router as ws_events_router
 app.include_router(ws_exec_router, prefix="/ws", tags=["websocket"])
+app.include_router(ws_events_router, prefix="/ws", tags=["websocket"])
 
 
 @app.get("/")

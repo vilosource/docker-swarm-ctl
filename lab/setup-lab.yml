@@ -67,10 +67,10 @@
       systemd:
         daemon_reload: yes
 
-    - name: Ensure Docker service is started and enabled
+    - name: Restart Docker service to apply configuration
       systemd:
         name: docker
-        state: started
+        state: restarted
         enabled: yes
 
     # User Configuration
@@ -174,3 +174,87 @@
         name: docker
         state: restarted
         daemon_reload: yes
+
+# Configure Docker Swarm
+- name: Initialize Docker Swarm on Manager Node
+  hosts: docker-2.lab.viloforge.com
+  become: yes
+  tasks:
+    - name: Check if Swarm is already initialized
+      command: docker info --format '{%raw%}{{.Swarm.LocalNodeState}}{%endraw%}'
+      register: swarm_state
+      changed_when: false
+
+    - name: Get eth0 IP for Swarm advertise address
+      shell: ip -4 addr show eth0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}'
+      register: manager_ip
+      changed_when: false
+
+    - name: Initialize Docker Swarm
+      command: docker swarm init --advertise-addr {{ manager_ip.stdout }}
+      when: swarm_state.stdout != 'active'
+      register: swarm_init_result
+
+    - name: Get worker join token
+      command: docker swarm join-token -q worker
+      register: worker_token
+      changed_when: false
+
+    - name: Store join command for workers
+      set_fact:
+        swarm_join_command: "docker swarm join --token {{ worker_token.stdout }} {{ manager_ip.stdout }}:2377"
+
+    - name: Display Swarm initialization info
+      debug:
+        msg:
+          - "Swarm initialized on {{ inventory_hostname }}"
+          - "Manager IP: {{ manager_ip.stdout }}"
+          - "Worker join token: {{ worker_token.stdout }}"
+
+- name: Join Worker Nodes to Swarm
+  hosts: docker-3.lab.viloforge.com,docker-4.lab.viloforge.com
+  become: yes
+  tasks:
+    - name: Check if already part of swarm
+      command: docker info --format '{%raw%}{{.Swarm.LocalNodeState}}{%endraw%}'
+      register: node_swarm_state
+      changed_when: false
+
+    - name: Get manager IP from hostvars
+      set_fact:
+        manager_ip: "{{ hostvars['docker-2.lab.viloforge.com']['manager_ip']['stdout'] }}"
+        worker_token: "{{ hostvars['docker-2.lab.viloforge.com']['worker_token']['stdout'] }}"
+
+    - name: Join Docker Swarm as worker
+      command: docker swarm join --token {{ worker_token }} {{ manager_ip }}:2377
+      when: node_swarm_state.stdout != 'active'
+      register: join_result
+
+    - name: Display join status
+      debug:
+        msg: "{{ inventory_hostname }} joined swarm as worker"
+      when: join_result.changed
+
+- name: Verify Swarm Configuration
+  hosts: docker-2.lab.viloforge.com
+  become: yes
+  tasks:
+    - name: List all nodes in the swarm
+      command: docker node ls
+      register: swarm_nodes
+      changed_when: false
+
+    - name: Get swarm info
+      command: docker info --format '{%raw%}{{json .Swarm}}{%endraw%}'
+      register: swarm_info
+      changed_when: false
+
+    - name: Display swarm status
+      debug:
+        msg:
+          - "Swarm Nodes:"
+          - "{{ swarm_nodes.stdout_lines }}"
+          - ""
+          - "Swarm is configured with:"
+          - "- 1 Manager: docker-2"
+          - "- 2 Workers: docker-3, docker-4"

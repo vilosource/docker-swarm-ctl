@@ -13,6 +13,7 @@ import json
 from app.db.session import get_db
 from app.core.security import get_current_active_user, require_role
 from app.core.exceptions import ValidationError
+from app.core.rate_limit import rate_limit, strict_limit
 from app.schemas.container import (
     ContainerCreate, ContainerResponse, ContainerStats, ContainerInspect
 )
@@ -79,6 +80,7 @@ async def list_containers(
 
 
 @router.post("/", response_model=ContainerResponse)
+@rate_limit("30/hour")
 @handle_api_errors("create_container")
 @audit_operation("container.create", "container", lambda r: r.id)
 async def create_container(
@@ -205,6 +207,7 @@ async def restart_container(
 
 
 @router.delete("/{container_id}")
+@rate_limit("50/hour")
 @handle_api_errors("remove_container")
 @audit_operation("container.delete", "container")
 @standard_response("Container {container_id} removed")
