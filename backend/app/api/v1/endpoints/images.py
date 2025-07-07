@@ -1,5 +1,6 @@
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Request
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Request, Response
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 import uuid
 
@@ -39,6 +40,7 @@ async def list_images(
 @rate_limit("10/hour")
 async def pull_image(
     request: Request,
+    response: Response,
     image_data: ImagePull,
     background_tasks: BackgroundTasks,
     current_user: User = Depends(require_role("operator")),
@@ -108,6 +110,7 @@ async def get_image(
 @rate_limit("30/hour")
 async def remove_image(
     request: Request,
+    response: Response,
     image_id: str,
     force: bool = False,
     current_user: User = Depends(require_role("operator")),
@@ -165,6 +168,7 @@ async def get_image_history(
 @rate_limit("5/hour")
 async def prune_images(
     request: Request,
+    response: Response,
     current_user: User = Depends(require_role("admin")),
     db: AsyncSession = Depends(get_db)
 ):

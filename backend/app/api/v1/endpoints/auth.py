@@ -1,7 +1,8 @@
 from datetime import datetime, timedelta
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
 from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from jose import JWTError, jwt
@@ -22,10 +23,11 @@ from app.models.refresh_token import RefreshToken
 router = APIRouter()
 
 
-@router.post("/login", response_model=TokenPair)
+@router.post("/login")
 @auth_limit
 async def login(
     request: Request,
+    response: Response,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: AsyncSession = Depends(get_db)
 ):
@@ -62,16 +64,20 @@ async def login(
     
     await db.commit()
     
-    return TokenPair(
-        access_token=access_token,
-        refresh_token=refresh_token
+    return JSONResponse(
+        content={
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "token_type": "bearer"
+        }
     )
 
 
-@router.post("/refresh", response_model=Token)
+@router.post("/refresh")
 @rate_limit("10/minute")
 async def refresh_token(
     request: Request,
+    response: Response,
     refresh_token: str,
     db: AsyncSession = Depends(get_db)
 ):
@@ -111,13 +117,19 @@ async def refresh_token(
     # Create new access token
     access_token = create_access_token({"sub": str(user.id), "role": user.role})
     
-    return Token(access_token=access_token)
+    return JSONResponse(
+        content={
+            "access_token": access_token,
+            "token_type": "bearer"
+        }
+    )
 
 
 @router.post("/logout")
 @rate_limit("20/minute")
 async def logout(
     request: Request,
+    response: Response,
     refresh_token: str,
     current_user = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
@@ -144,4 +156,6 @@ async def logout(
     
     await db.commit()
     
-    return {"message": "Successfully logged out"}
+    return JSONResponse(
+        content={"message": "Successfully logged out"}
+    )

@@ -6,7 +6,8 @@ Reduces code from 413 lines to ~200 lines while maintaining functionality.
 """
 
 from typing import List, Optional, Dict, Any
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Query, Request, Response
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 import json
 
@@ -85,6 +86,7 @@ async def list_containers(
 @audit_operation("container.create", "container", lambda r: r.id)
 async def create_container(
     request: Request,
+    response: Response,
     config: ContainerCreate,
     host_id: Optional[str] = Query(None, description="Docker host ID"),
     current_user: User = Depends(require_role("operator")),
