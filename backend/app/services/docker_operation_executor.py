@@ -644,3 +644,420 @@ class DockerOperationExecutor:
         """Prune unused networks"""
         async with self._get_client_context(host_id) as (client, resolved_host_id):
             return client.networks.prune(filters=filters)
+    
+    # Swarm operations
+    @docker_operation("get_swarm_info")
+    async def get_swarm_info(
+        self,
+        host_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Get swarm information"""
+        async with self._get_client_context(host_id) as (client, resolved_host_id):
+            return client.swarm.attrs
+    
+    @docker_operation("init_swarm")
+    async def init_swarm(
+        self,
+        advertise_addr: str,
+        listen_addr: str = "0.0.0.0:2377",
+        force_new_cluster: bool = False,
+        default_addr_pool: Optional[List[str]] = None,
+        subnet_size: Optional[int] = None,
+        data_path_addr: Optional[str] = None,
+        data_path_port: Optional[int] = None,
+        host_id: Optional[str] = None,
+        **kwargs
+    ) -> str:
+        """Initialize a swarm"""
+        async with self._get_client_context(host_id) as (client, resolved_host_id):
+            return client.swarm.init(
+                advertise_addr=advertise_addr,
+                listen_addr=listen_addr,
+                force_new_cluster=force_new_cluster,
+                default_addr_pool=default_addr_pool,
+                subnet_size=subnet_size,
+                data_path_addr=data_path_addr,
+                data_path_port=data_path_port,
+                **kwargs
+            )
+    
+    @docker_operation("join_swarm")
+    async def join_swarm(
+        self,
+        remote_addrs: List[str],
+        join_token: str,
+        advertise_addr: Optional[str] = None,
+        listen_addr: str = "0.0.0.0:2377",
+        data_path_addr: Optional[str] = None,
+        host_id: Optional[str] = None,
+        **kwargs
+    ) -> None:
+        """Join a swarm"""
+        async with self._get_client_context(host_id) as (client, resolved_host_id):
+            client.swarm.join(
+                remote_addrs=remote_addrs,
+                join_token=join_token,
+                advertise_addr=advertise_addr,
+                listen_addr=listen_addr,
+                data_path_addr=data_path_addr,
+                **kwargs
+            )
+    
+    @docker_operation("leave_swarm")
+    async def leave_swarm(
+        self,
+        force: bool = False,
+        host_id: Optional[str] = None
+    ) -> None:
+        """Leave a swarm"""
+        async with self._get_client_context(host_id) as (client, resolved_host_id):
+            client.swarm.leave(force=force)
+    
+    @docker_operation("update_swarm")
+    async def update_swarm(
+        self,
+        rotate_worker_token: bool = False,
+        rotate_manager_token: bool = False,
+        rotate_manager_unlock_key: bool = False,
+        host_id: Optional[str] = None,
+        **kwargs
+    ) -> None:
+        """Update swarm configuration"""
+        async with self._get_client_context(host_id) as (client, resolved_host_id):
+            client.swarm.update(
+                rotate_worker_token=rotate_worker_token,
+                rotate_manager_token=rotate_manager_token,
+                rotate_manager_unlock_key=rotate_manager_unlock_key,
+                **kwargs
+            )
+    
+    # Node operations
+    @docker_operation("list_nodes")
+    async def list_nodes(
+        self,
+        filters: Optional[Dict[str, Any]] = None,
+        host_id: Optional[str] = None
+    ) -> List[tuple[Any, str]]:
+        """List swarm nodes"""
+        async with self._get_client_context(host_id) as (client, resolved_host_id):
+            nodes = client.nodes.list(filters=filters)
+            return [(node, resolved_host_id) for node in nodes]
+    
+    @docker_operation("get_node")
+    async def get_node(
+        self,
+        node_id: str,
+        host_id: Optional[str] = None
+    ) -> tuple[Any, str]:
+        """Get a swarm node"""
+        async with self._get_client_context(host_id) as (client, resolved_host_id):
+            node = client.nodes.get(node_id)
+            return node, resolved_host_id
+    
+    @docker_operation("update_node")
+    async def update_node(
+        self,
+        node_id: str,
+        version: int,
+        spec: Dict[str, Any],
+        host_id: Optional[str] = None
+    ) -> tuple[Any, str]:
+        """Update a swarm node"""
+        async with self._get_client_context(host_id) as (client, resolved_host_id):
+            node = client.nodes.get(node_id)
+            updated = node.update(spec)
+            return updated, resolved_host_id
+    
+    @docker_operation("remove_node")
+    async def remove_node(
+        self,
+        node_id: str,
+        force: bool = False,
+        host_id: Optional[str] = None
+    ) -> None:
+        """Remove a swarm node"""
+        async with self._get_client_context(host_id) as (client, resolved_host_id):
+            node = client.nodes.get(node_id)
+            node.remove(force=force)
+    
+    # Service operations
+    @docker_operation("create_service")
+    async def create_service(
+        self,
+        image: str,
+        command: Optional[List[str]] = None,
+        name: Optional[str] = None,
+        mode: Optional[Dict[str, Any]] = None,
+        mounts: Optional[List[Dict[str, Any]]] = None,
+        networks: Optional[List[str]] = None,
+        endpoint_spec: Optional[Dict[str, Any]] = None,
+        update_config: Optional[Dict[str, Any]] = None,
+        rollback_config: Optional[Dict[str, Any]] = None,
+        restart_policy: Optional[Dict[str, Any]] = None,
+        secrets: Optional[List[Dict[str, Any]]] = None,
+        configs: Optional[List[Dict[str, Any]]] = None,
+        env: Optional[List[str]] = None,
+        workdir: Optional[str] = None,
+        user: Optional[str] = None,
+        labels: Optional[Dict[str, str]] = None,
+        constraints: Optional[List[str]] = None,
+        preferences: Optional[List[Dict[str, Any]]] = None,
+        platforms: Optional[List[Dict[str, Any]]] = None,
+        container_labels: Optional[Dict[str, str]] = None,
+        resources: Optional[Dict[str, Any]] = None,
+        host_id: Optional[str] = None,
+        **kwargs
+    ) -> tuple[Any, str]:
+        """Create a swarm service"""
+        async with self._get_client_context(host_id) as (client, resolved_host_id):
+            service = client.services.create(
+                image=image,
+                command=command,
+                name=name,
+                mode=mode,
+                mounts=mounts,
+                networks=networks,
+                endpoint_spec=endpoint_spec,
+                update_config=update_config,
+                rollback_config=rollback_config,
+                restart_policy=restart_policy,
+                secrets=secrets,
+                configs=configs,
+                env=env,
+                workdir=workdir,
+                user=user,
+                labels=labels,
+                constraints=constraints,
+                preferences=preferences,
+                platforms=platforms,
+                container_labels=container_labels,
+                resources=resources,
+                **kwargs
+            )
+            return service, resolved_host_id
+    
+    @docker_operation("list_services")
+    async def list_services(
+        self,
+        filters: Optional[Dict[str, Any]] = None,
+        host_id: Optional[str] = None
+    ) -> List[tuple[Any, str]]:
+        """List swarm services"""
+        async with self._get_client_context(host_id) as (client, resolved_host_id):
+            services = client.services.list(filters=filters)
+            return [(service, resolved_host_id) for service in services]
+    
+    @docker_operation("get_service")
+    async def get_service(
+        self,
+        service_id: str,
+        host_id: Optional[str] = None
+    ) -> tuple[Any, str]:
+        """Get a swarm service"""
+        async with self._get_client_context(host_id) as (client, resolved_host_id):
+            service = client.services.get(service_id)
+            return service, resolved_host_id
+    
+    @docker_operation("update_service")
+    async def update_service(
+        self,
+        service_id: str,
+        version: int,
+        task_template: Optional[Dict[str, Any]] = None,
+        name: Optional[str] = None,
+        labels: Optional[Dict[str, str]] = None,
+        mode: Optional[Dict[str, Any]] = None,
+        update_config: Optional[Dict[str, Any]] = None,
+        networks: Optional[List[str]] = None,
+        endpoint_spec: Optional[Dict[str, Any]] = None,
+        rollback_config: Optional[Dict[str, Any]] = None,
+        host_id: Optional[str] = None,
+        **kwargs
+    ) -> tuple[Any, str]:
+        """Update a swarm service"""
+        async with self._get_client_context(host_id) as (client, resolved_host_id):
+            service = client.services.get(service_id)
+            updated = service.update(
+                version=version,
+                task_template=task_template,
+                name=name,
+                labels=labels,
+                mode=mode,
+                update_config=update_config,
+                networks=networks,
+                endpoint_spec=endpoint_spec,
+                rollback_config=rollback_config,
+                **kwargs
+            )
+            return updated, resolved_host_id
+    
+    @docker_operation("remove_service")
+    async def remove_service(
+        self,
+        service_id: str,
+        host_id: Optional[str] = None
+    ) -> None:
+        """Remove a swarm service"""
+        async with self._get_client_context(host_id) as (client, resolved_host_id):
+            service = client.services.get(service_id)
+            service.remove()
+    
+    @docker_operation("scale_service")
+    async def scale_service(
+        self,
+        service_id: str,
+        replicas: int,
+        host_id: Optional[str] = None
+    ) -> tuple[Any, str]:
+        """Scale a swarm service"""
+        async with self._get_client_context(host_id) as (client, resolved_host_id):
+            service = client.services.get(service_id)
+            service.scale(replicas)
+            return service, resolved_host_id
+    
+    @docker_operation("service_logs")
+    async def service_logs(
+        self,
+        service_id: str,
+        details: bool = False,
+        follow: bool = False,
+        stdout: bool = True,
+        stderr: bool = True,
+        since: Optional[int] = None,
+        timestamps: bool = False,
+        tail: Optional[str] = None,
+        host_id: Optional[str] = None
+    ):
+        """Get service logs"""
+        async with self._get_client_context(host_id) as (client, resolved_host_id):
+            service = client.services.get(service_id)
+            return service.logs(
+                details=details,
+                follow=follow,
+                stdout=stdout,
+                stderr=stderr,
+                since=since,
+                timestamps=timestamps,
+                tail=tail
+            )
+    
+    @docker_operation("list_service_tasks")
+    async def list_service_tasks(
+        self,
+        service_id: str,
+        filters: Optional[Dict[str, Any]] = None,
+        host_id: Optional[str] = None
+    ) -> List[tuple[Any, str]]:
+        """List tasks for a service"""
+        async with self._get_client_context(host_id) as (client, resolved_host_id):
+            service = client.services.get(service_id)
+            tasks = service.tasks(filters=filters)
+            return [(task, resolved_host_id) for task in tasks]
+    
+    # Secret operations
+    @docker_operation("create_secret")
+    async def create_secret(
+        self,
+        name: str,
+        data: bytes,
+        labels: Optional[Dict[str, str]] = None,
+        driver: Optional[Dict[str, Any]] = None,
+        templating: Optional[Dict[str, Any]] = None,
+        host_id: Optional[str] = None
+    ) -> tuple[Any, str]:
+        """Create a swarm secret"""
+        async with self._get_client_context(host_id) as (client, resolved_host_id):
+            secret = client.secrets.create(
+                name=name,
+                data=data,
+                labels=labels,
+                driver=driver,
+                templating=templating
+            )
+            return secret, resolved_host_id
+    
+    @docker_operation("list_secrets")
+    async def list_secrets(
+        self,
+        filters: Optional[Dict[str, Any]] = None,
+        host_id: Optional[str] = None
+    ) -> List[tuple[Any, str]]:
+        """List swarm secrets"""
+        async with self._get_client_context(host_id) as (client, resolved_host_id):
+            secrets = client.secrets.list(filters=filters)
+            return [(secret, resolved_host_id) for secret in secrets]
+    
+    @docker_operation("get_secret")
+    async def get_secret(
+        self,
+        secret_id: str,
+        host_id: Optional[str] = None
+    ) -> tuple[Any, str]:
+        """Get a swarm secret"""
+        async with self._get_client_context(host_id) as (client, resolved_host_id):
+            secret = client.secrets.get(secret_id)
+            return secret, resolved_host_id
+    
+    @docker_operation("remove_secret")
+    async def remove_secret(
+        self,
+        secret_id: str,
+        host_id: Optional[str] = None
+    ) -> None:
+        """Remove a swarm secret"""
+        async with self._get_client_context(host_id) as (client, resolved_host_id):
+            secret = client.secrets.get(secret_id)
+            secret.remove()
+    
+    # Config operations
+    @docker_operation("create_config")
+    async def create_config(
+        self,
+        name: str,
+        data: bytes,
+        labels: Optional[Dict[str, str]] = None,
+        templating: Optional[Dict[str, Any]] = None,
+        host_id: Optional[str] = None
+    ) -> tuple[Any, str]:
+        """Create a swarm config"""
+        async with self._get_client_context(host_id) as (client, resolved_host_id):
+            config = client.configs.create(
+                name=name,
+                data=data,
+                labels=labels,
+                templating=templating
+            )
+            return config, resolved_host_id
+    
+    @docker_operation("list_configs")
+    async def list_configs(
+        self,
+        filters: Optional[Dict[str, Any]] = None,
+        host_id: Optional[str] = None
+    ) -> List[tuple[Any, str]]:
+        """List swarm configs"""
+        async with self._get_client_context(host_id) as (client, resolved_host_id):
+            configs = client.configs.list(filters=filters)
+            return [(config, resolved_host_id) for config in configs]
+    
+    @docker_operation("get_config")
+    async def get_config(
+        self,
+        config_id: str,
+        host_id: Optional[str] = None
+    ) -> tuple[Any, str]:
+        """Get a swarm config"""
+        async with self._get_client_context(host_id) as (client, resolved_host_id):
+            config = client.configs.get(config_id)
+            return config, resolved_host_id
+    
+    @docker_operation("remove_config")
+    async def remove_config(
+        self,
+        config_id: str,
+        host_id: Optional[str] = None
+    ) -> None:
+        """Remove a swarm config"""
+        async with self._get_client_context(host_id) as (client, resolved_host_id):
+            config = client.configs.get(config_id)
+            config.remove()

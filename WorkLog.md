@@ -317,3 +317,30 @@ Phase 1 is now 100% complete with all planned features implemented:
 - ✅ WebSocket support for real-time features
 
 All backend APIs and frontend UI are fully functional. The platform provides a complete Docker management solution for Phase 1 requirements.
+
+## Phase 2: Docker Swarm Support (In Progress)
+
+### Backend Implementation (50% Complete)
+- ✅ Data models created:
+  - NodeData, ServiceData, TaskData, SecretData, ConfigData
+- ✅ DockerOperationExecutor extended with all Swarm operations
+- ✅ UnifiedDockerService updated with Swarm methods
+- ✅ Pydantic schemas created for all Swarm resources
+- ✅ API endpoints implemented:
+  - `/api/swarm/*` - Swarm management (init, join, leave, update)
+  - `/api/nodes/*` - Node management (list, get, update, remove)
+  - `/api/services/*` - Service management (CRUD, scale, logs, tasks)
+  - `/api/secrets/*` - Secret management (CRUD)
+  - `/api/configs/*` - Config management (CRUD)
+- ✅ WebSocket support for service logs
+- ✅ Role-based access control and audit logging
+- ⏳ Testing and validation
+
+### Frontend Implementation (0% Complete)
+- 🔲 Swarm overview dashboard
+- 🔲 Node management UI
+- 🔲 Service creation and management
+- 🔲 Secret and config management
+- 🔲 Stack deployment interface
+- 🔲 Real-time service logs and events
+- 🔲 Task distribution visualization
