@@ -608,7 +608,9 @@ class UnifiedDockerService:
         host_id: Optional[str] = None
     ) -> List[Any]:
         """List images from specified host"""
-        return await self._executor.list_images(name, all, filters, host_id)
+        image_tuples = await self._executor.list_images(name, all, filters, host_id)
+        # Return just the image objects, not the tuples
+        return [image for image, _ in image_tuples]
     
     async def get_image(
         self,
@@ -616,7 +618,13 @@ class UnifiedDockerService:
         host_id: Optional[str] = None
     ) -> Any:
         """Get a specific image"""
-        return await self._executor.get_image(image_id, host_id)
+        # Since get_image might not be implemented in executor, let's use list_images
+        # and find the specific image
+        images = await self.list_images(host_id=host_id)
+        for image in images:
+            if image.id.startswith(image_id) or image_id in [tag.split(':')[-1] for tag in image.tags]:
+                return image
+        raise Exception(f"Image {image_id} not found")
     
     async def pull_image(
         self,
