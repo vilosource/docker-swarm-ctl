@@ -1,5 +1,5 @@
-from typing import List
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Request, Response
+from typing import List, Optional
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Request, Response, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 import uuid
@@ -8,10 +8,12 @@ from app.db.session import get_db
 from app.core.security import get_current_active_user, require_role
 from app.core.rate_limit import rate_limit
 from app.schemas.image import ImageResponse, ImagePull
-from app.services.docker_client import get_docker_client
+from app.services.docker_service import IDockerService, DockerServiceFactory
 from app.services.audit import AuditService
 from app.models.user import User
 from app.utils.tasks import task_manager
+from app.api.decorators import audit_operation, handle_docker_errors
+from app.api.decorators_enhanced import handle_api_errors
 
 
 router = APIRouter()
@@ -27,37 +29,52 @@ def format_image(image) -> ImageResponse:
     )
 
 
+async def get_docker_service(
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+) -> IDockerService:
+    """Dependency to get Docker service instance"""
+    return DockerServiceFactory.create(current_user, db, multi_host=True)
+
+
 @router.get("/", response_model=List[ImageResponse])
+@handle_api_errors("list_images")
 async def list_images(
-    current_user: User = Depends(get_current_active_user)
+    host_id: Optional[str] = Query(None, description="Docker host ID"),
+    docker_service: IDockerService = Depends(get_docker_service)
 ):
-    client = get_docker_client()
-    images = client.images.list()
+    """List images from specified or default Docker host"""
+    images = await docker_service.list_images(host_id=host_id)
     return [format_image(img) for img in images]
 
 
 @router.post("/pull")
 @rate_limit("10/hour")
+@handle_api_errors("pull_image")
+@audit_operation("image.pull", "image", lambda r: r.get("message", ""))
 async def pull_image(
     request: Request,
     response: Response,
     image_data: ImagePull,
     background_tasks: BackgroundTasks,
+    host_id: Optional[str] = Query(None, description="Docker host ID"),
     current_user: User = Depends(require_role("operator")),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    docker_service: IDockerService = Depends(get_docker_service)
 ):
+    """Pull an image from registry to specified or default Docker host"""
     task_id = str(uuid.uuid4())
     
     # Create background task
     async def pull_task():
-        client = get_docker_client()
         try:
             task_manager.update_task(task_id, "in_progress", "Pulling image...")
             
-            image = client.images.pull(
-                image_data.repository,
+            image = await docker_service.pull_image(
+                repository=image_data.repository,
                 tag=image_data.tag,
-                auth_config=image_data.auth_config
+                auth_config=image_data.auth_config,
+                host_id=host_id
             )
             
             task_manager.update_task(
@@ -73,19 +90,6 @@ async def pull_image(
     
     background_tasks.add_task(pull_task)
     
-    # Log the action
-    audit_service = AuditService(db)
-    await audit_service.log(
-        user=current_user,
-        action="image.pull",
-        details={
-            "repository": image_data.repository,
-            "tag": image_data.tag,
-            "task_id": task_id
-        },
-        request=request
-    )
-    
     return {
         "task_id": task_id,
         "message": f"Image pull started for {image_data.repository}:{image_data.tag}"
@@ -93,14 +97,15 @@ async def pull_image(
 
 
 @router.get("/{image_id}")
+@handle_api_errors("get_image")
 async def get_image(
     image_id: str,
-    current_user: User = Depends(get_current_active_user)
+    host_id: Optional[str] = Query(None, description="Docker host ID"),
+    docker_service: IDockerService = Depends(get_docker_service)
 ):
-    client = get_docker_client()
-    
+    """Get specific image details from specified or default Docker host"""
     try:
-        image = client.images.get(image_id)
+        image = await docker_service.get_image(image_id, host_id=host_id)
         return format_image(image)
     except Exception as e:
         raise HTTPException(status_code=404, detail=f"Image {image_id} not found")
@@ -108,57 +113,39 @@ async def get_image(
 
 @router.delete("/{image_id}")
 @rate_limit("30/hour")
+@handle_api_errors("remove_image")
+@audit_operation("image.delete", "image", lambda r: r.get("message", ""))
 async def remove_image(
     request: Request,
     response: Response,
     image_id: str,
     force: bool = False,
+    host_id: Optional[str] = Query(None, description="Docker host ID"),
     current_user: User = Depends(require_role("operator")),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    docker_service: IDockerService = Depends(get_docker_service)
 ):
-    client = get_docker_client()
-    
+    """Remove an image from specified or default Docker host"""
     try:
-        client.images.remove(image_id, force=force)
-        
-        # Log the action
-        audit_service = AuditService(db)
-        await audit_service.log(
-            user=current_user,
-            action="image.delete",
-            resource_type="image",
-            resource_id=image_id,
-            details={"force": force},
-            request=request
-        )
-        
+        await docker_service.remove_image(image_id, force=force, host_id=host_id)
         return {"message": f"Image {image_id} removed"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/{image_id}/history")
+@handle_api_errors("get_image_history")
 async def get_image_history(
     image_id: str,
-    current_user: User = Depends(get_current_active_user)
+    host_id: Optional[str] = Query(None, description="Docker host ID"),
+    docker_service: IDockerService = Depends(get_docker_service)
 ):
-    client = get_docker_client()
-    
+    """Get image history from specified or default Docker host"""
     try:
-        image = client.images.get(image_id)
-        history = image.history()
-        
+        history = await docker_service.get_image_history(image_id, host_id=host_id)
         return {
             "image_id": image_id,
-            "history": [
-                {
-                    "created": h.get("Created"),
-                    "created_by": h.get("CreatedBy"),
-                    "size": h.get("Size", 0),
-                    "comment": h.get("Comment", "")
-                }
-                for h in history
-            ]
+            "history": history
         }
     except Exception as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -166,26 +153,19 @@ async def get_image_history(
 
 @router.post("/prune")
 @rate_limit("5/hour")
+@handle_api_errors("prune_images")
+@audit_operation("image.prune", "system", lambda r: "prune completed")
 async def prune_images(
     request: Request,
     response: Response,
+    host_id: Optional[str] = Query(None, description="Docker host ID"),
     current_user: User = Depends(require_role("admin")),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    docker_service: IDockerService = Depends(get_docker_service)
 ):
-    client = get_docker_client()
-    
+    """Prune unused images from specified or default Docker host"""
     try:
-        result = client.images.prune()
-        
-        # Log the action
-        audit_service = AuditService(db)
-        await audit_service.log(
-            user=current_user,
-            action="image.prune",
-            details=result,
-            request=request
-        )
-        
+        result = await docker_service.prune_images(host_id=host_id)
         return {
             "message": "Image prune completed",
             "images_deleted": result.get("ImagesDeleted", []),

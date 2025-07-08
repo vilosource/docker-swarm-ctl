@@ -599,6 +599,71 @@ class UnifiedDockerService:
         """Prune unused volumes"""
         return await self._executor.prune_volumes(filters, host_id)
     
+    # Image operations
+    async def list_images(
+        self,
+        name: Optional[str] = None,
+        all: bool = False,
+        filters: Optional[Dict[str, Any]] = None,
+        host_id: Optional[str] = None
+    ) -> List[Any]:
+        """List images from specified host"""
+        return await self._executor.list_images(name, all, filters, host_id)
+    
+    async def get_image(
+        self,
+        image_id: str,
+        host_id: Optional[str] = None
+    ) -> Any:
+        """Get a specific image"""
+        return await self._executor.get_image(image_id, host_id)
+    
+    async def pull_image(
+        self,
+        repository: str,
+        tag: Optional[str] = None,
+        auth_config: Optional[Dict[str, str]] = None,
+        host_id: Optional[str] = None,
+        **kwargs
+    ) -> Any:
+        """Pull an image from registry"""
+        return await self._executor.pull_image(repository, tag, auth_config, host_id, **kwargs)
+    
+    async def remove_image(
+        self,
+        image_id: str,
+        force: bool = False,
+        host_id: Optional[str] = None
+    ) -> None:
+        """Remove an image"""
+        await self._executor.remove_image(image_id, force, False, host_id)
+    
+    async def get_image_history(
+        self,
+        image_id: str,
+        host_id: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """Get image history"""
+        image = await self._executor.get_image(image_id, host_id)
+        history = image.history()
+        return [
+            {
+                "created": h.get("Created"),
+                "created_by": h.get("CreatedBy"),
+                "size": h.get("Size", 0),
+                "comment": h.get("Comment", "")
+            }
+            for h in history
+        ]
+    
+    async def prune_images(
+        self,
+        filters: Optional[Dict[str, Any]] = None,
+        host_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Prune unused images"""
+        return await self._executor.prune_images(filters, host_id)
+    
     # Network operations
     async def list_networks(
         self,
