@@ -39,12 +39,20 @@ export default function HostImages() {
       queryClient.invalidateQueries({ queryKey: ['images', hostId] })
       setSelectedImages(new Set())
     },
+    onError: (error: any) => {
+      const errorMessage = error.response?.data?.detail || error.message || 'Failed to remove image'
+      alert(errorMessage)
+    },
   })
   
   const handleRemove = async (image: Image) => {
     const name = image.tags[0] || image.id.substring(0, 12)
     if (confirm(`Are you sure you want to remove image ${name}?`)) {
-      await removeMutation.mutateAsync({ id: image.id })
+      try {
+        await removeMutation.mutateAsync({ id: image.id })
+      } catch (error) {
+        // Error is already handled by onError in the mutation
+      }
     }
   }
   
@@ -53,7 +61,12 @@ export default function HostImages() {
     
     if (confirm(`Are you sure you want to remove ${selectedImages.size} selected images?`)) {
       for (const imageId of selectedImages) {
-        await removeMutation.mutateAsync({ id: imageId })
+        try {
+          await removeMutation.mutateAsync({ id: imageId })
+        } catch (error) {
+          // Error is already handled by onError in the mutation
+          // Continue with next image
+        }
       }
     }
   }

@@ -15,7 +15,7 @@ from docker.client import DockerClient
 from docker.models.containers import Container
 from docker.errors import DockerException, NotFound, APIError
 
-from app.core.exceptions import DockerOperationError, DockerConnectionError
+from app.core.exceptions import DockerOperationError, DockerConnectionError, ResourceConflictError, ResourceNotFoundError
 from app.core.logging import logger
 from app.models import User
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -87,7 +87,39 @@ def docker_operation(operation_name: str):
                 result = await func(self, *args, **kwargs)
                 logger.debug(f"Successfully completed {operation_name}")
                 return result
+            except APIError as e:
+                # Handle specific Docker API errors
+                logger.error(f"Docker API error in {operation_name}: {e}")
+                error_msg = str(e)
+                
+                # Check for conflict errors (409)
+                if e.response.status_code == 409 or "conflict" in error_msg.lower():
+                    # Extract meaningful error message
+                    if "image is being used by" in error_msg:
+                        # Extract the container information
+                        detail = error_msg.split("(")[-1].rstrip(")")
+                        raise ResourceConflictError("image", f"Cannot delete image: {detail}")
+                    else:
+                        raise ResourceConflictError("resource", error_msg)
+                
+                # Check for not found errors (404)
+                elif e.response.status_code == 404 or "no such" in error_msg.lower():
+                    # Extract resource type and ID if possible
+                    if "no such image" in error_msg.lower():
+                        image_id = args[0] if args else "unknown"
+                        raise ResourceNotFoundError("image", image_id)
+                    elif "no such container" in error_msg.lower():
+                        container_id = args[0] if args else "unknown"
+                        raise ResourceNotFoundError("container", container_id)
+                    else:
+                        raise ResourceNotFoundError("resource", "unknown")
+                
+                # Other Docker API errors
+                else:
+                    raise DockerOperationError(operation_name, str(e))
+                    
             except DockerException as e:
+                # Other Docker exceptions (connection errors, etc.)
                 logger.error(f"Docker error in {operation_name}: {e}")
                 raise DockerOperationError(operation_name, str(e))
             except Exception as e:

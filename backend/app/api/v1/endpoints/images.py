@@ -7,6 +7,7 @@ import uuid
 from app.db.session import get_db
 from app.core.security import get_current_active_user, require_role
 from app.core.rate_limit import rate_limit
+from app.core.exceptions import ResourceConflictError, ResourceNotFoundError, DockerOperationError
 from app.schemas.image import ImageResponse, ImagePull
 from app.services.docker_service import IDockerService, DockerServiceFactory
 from app.services.audit import AuditService
@@ -129,8 +130,30 @@ async def remove_image(
     try:
         await docker_service.remove_image(image_id, force=force, host_id=host_id)
         return {"message": f"Image {image_id} removed"}
+    except ResourceConflictError as e:
+        # Image is in use by a container
+        raise HTTPException(
+            status_code=409,
+            detail=e.message
+        )
+    except ResourceNotFoundError as e:
+        # Image not found
+        raise HTTPException(
+            status_code=404,
+            detail=e.message
+        )
+    except DockerOperationError as e:
+        # Other Docker operation errors
+        raise HTTPException(
+            status_code=400,
+            detail=e.message
+        )
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        # Unexpected errors
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal error: {str(e)}"
+        )
 
 
 @router.get("/{image_id}/history")
