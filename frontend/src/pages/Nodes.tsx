@@ -1,93 +1,42 @@
-import React, { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import {
-  Box,
-  Card,
-  CardContent,
-  Typography,
-  Button,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Chip,
-  IconButton,
-  Menu,
-  MenuItem,
-  Tooltip,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Select,
-  FormControl,
-  InputLabel,
-  Alert,
-  CircularProgress,
-} from '@mui/material';
-import {
-  MoreVert as MoreIcon,
-  CheckCircle as ActiveIcon,
-  PauseCircle as PauseIcon,
-  RemoveCircle as DrainIcon,
-  Crown as LeaderIcon,
-  Computer as NodeIcon,
-  Worker as WorkerIcon,
-  Refresh as RefreshIcon,
-} from '@mui/icons-material';
-import { useNodes, useUpdateNode, useRemoveNode } from '../hooks/useNodes';
-import { formatDistanceToNow } from 'date-fns';
+import { useState } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
+import { useNodes, useUpdateNode, useRemoveNode } from '../hooks/useNodes'
+import { formatDistanceToNow } from 'date-fns'
 
 export default function Nodes() {
-  const { hostId } = useParams<{ hostId: string }>();
-  const navigate = useNavigate();
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [selectedNode, setSelectedNode] = useState<any>(null);
-  const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
-  const [removeDialogOpen, setRemoveDialogOpen] = useState(false);
-  const [availability, setAvailability] = useState<string>('');
-  const [role, setRole] = useState<string>('');
+  const { hostId } = useParams<{ hostId: string }>()
+  const navigate = useNavigate()
+  const [selectedNode, setSelectedNode] = useState<any>(null)
+  const [showUpdateModal, setShowUpdateModal] = useState(false)
+  const [showRemoveModal, setShowRemoveModal] = useState(false)
+  const [availability, setAvailability] = useState<string>('')
+  const [role, setRole] = useState<string>('')
 
-  const { data, isLoading, error, refetch } = useNodes(hostId || '');
-  const updateNode = useUpdateNode();
-  const removeNode = useRemoveNode();
+  const { data, isLoading, error, refetch } = useNodes(hostId || '')
+  const updateNode = useUpdateNode()
+  const removeNode = useRemoveNode()
 
-  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, node: any) => {
-    setAnchorEl(event.currentTarget);
-    setSelectedNode(node);
-  };
+  const handleUpdateClick = (node: any) => {
+    setSelectedNode(node)
+    setAvailability(node.availability)
+    setRole(node.role)
+    setShowUpdateModal(true)
+  }
 
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-    setSelectedNode(null);
-  };
-
-  const handleUpdateClick = () => {
-    if (selectedNode) {
-      setAvailability(selectedNode.availability);
-      setRole(selectedNode.role);
-      setUpdateDialogOpen(true);
-    }
-    handleMenuClose();
-  };
-
-  const handleRemoveClick = () => {
-    setRemoveDialogOpen(true);
-    handleMenuClose();
-  };
+  const handleRemoveClick = (node: any) => {
+    setSelectedNode(node)
+    setShowRemoveModal(true)
+  }
 
   const handleUpdateNode = async () => {
-    if (!hostId || !selectedNode) return;
+    if (!hostId || !selectedNode) return
 
-    const updates: any = {};
+    const updates: any = {}
     if (availability !== selectedNode.availability) {
-      updates.availability = availability;
+      updates.availability = availability
     }
     if (role !== selectedNode.role) {
-      updates.role = role;
+      updates.role = role
     }
 
     try {
@@ -96,269 +45,331 @@ export default function Nodes() {
         nodeId: selectedNode.id,
         version: selectedNode.version,
         update: updates,
-      });
-      setUpdateDialogOpen(false);
-      setSelectedNode(null);
+      })
+      setShowUpdateModal(false)
+      setSelectedNode(null)
     } catch (error) {
-      console.error('Failed to update node:', error);
+      console.error('Failed to update node:', error)
     }
-  };
+  }
 
   const handleRemoveNode = async (force: boolean) => {
-    if (!hostId || !selectedNode) return;
+    if (!hostId || !selectedNode) return
 
     try {
       await removeNode.mutateAsync({
         hostId,
         nodeId: selectedNode.id,
         force,
-      });
-      setRemoveDialogOpen(false);
-      setSelectedNode(null);
+      })
+      setShowRemoveModal(false)
+      setSelectedNode(null)
     } catch (error) {
-      console.error('Failed to remove node:', error);
+      console.error('Failed to remove node:', error)
     }
-  };
+  }
 
-  const getAvailabilityIcon = (availability: string) => {
+  const getAvailabilityBadge = (availability: string) => {
     switch (availability) {
       case 'active':
-        return <ActiveIcon color="success" fontSize="small" />;
+        return <span className="badge bg-success">Active</span>
       case 'pause':
-        return <PauseIcon color="warning" fontSize="small" />;
+        return <span className="badge bg-warning">Paused</span>
       case 'drain':
-        return <DrainIcon color="error" fontSize="small" />;
+        return <span className="badge bg-danger">Drained</span>
       default:
-        return null;
+        return <span className="badge bg-secondary">{availability}</span>
     }
-  };
+  }
 
-  const getStatusChip = (status: string) => {
+  const getStatusBadge = (status: string) => {
     switch (status) {
       case 'ready':
-        return <Chip label="Ready" color="success" size="small" />;
+        return <span className="badge bg-success">Ready</span>
       case 'down':
-        return <Chip label="Down" color="error" size="small" />;
+        return <span className="badge bg-danger">Down</span>
       case 'unknown':
-        return <Chip label="Unknown" color="default" size="small" />;
+        return <span className="badge bg-secondary">Unknown</span>
       default:
-        return <Chip label={status} size="small" />;
+        return <span className="badge bg-secondary">{status}</span>
     }
-  };
+  }
 
   if (!hostId) {
     return (
-      <Box sx={{ p: 3 }}>
-        <Alert severity="error">No host ID provided</Alert>
-      </Box>
-    );
+      <div className="row">
+        <div className="col-12">
+          <div className="alert alert-danger">No host ID provided</div>
+        </div>
+      </div>
+    )
   }
 
   if (isLoading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
-        <CircularProgress />
-      </Box>
-    );
+      <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '400px' }}>
+        <div className="spinner-border" role="status">
+          <span className="visually-hidden">Loading...</span>
+        </div>
+      </div>
+    )
   }
 
   if (error) {
     return (
-      <Box sx={{ p: 3 }}>
-        <Alert severity="error">Failed to load nodes: {error.message}</Alert>
-      </Box>
-    );
+      <div className="row">
+        <div className="col-12">
+          <div className="alert alert-danger">
+            Failed to load nodes: {error instanceof Error ? error.message : 'Unknown error'}
+          </div>
+        </div>
+      </div>
+    )
   }
 
-  const nodes = data?.nodes || [];
+  const nodes = data?.nodes || []
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4">
-          <NodeIcon sx={{ mr: 1, verticalAlign: 'bottom' }} />
-          Swarm Nodes
-        </Typography>
-        <Box>
-          <Button
-            variant="outlined"
-            startIcon={<RefreshIcon />}
-            onClick={() => refetch()}
-            sx={{ mr: 2 }}
-          >
-            Refresh
-          </Button>
-          <Button
-            variant="contained"
-            onClick={() => navigate(`/hosts/${hostId}/swarm/join`)}
-          >
-            Add Node
-          </Button>
-        </Box>
-      </Box>
-
-      <Card>
-        <CardContent>
-          <TableContainer component={Paper} variant="outlined">
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Hostname</TableCell>
-                  <TableCell>Role</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell>Availability</TableCell>
-                  <TableCell>Engine Version</TableCell>
-                  <TableCell>IP Address</TableCell>
-                  <TableCell>Last Updated</TableCell>
-                  <TableCell align="right">Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {nodes.map((node) => (
-                  <TableRow key={node.id}>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        {node.hostname}
-                        {node.is_leader && (
-                          <Tooltip title="Leader">
-                            <LeaderIcon sx={{ ml: 1, color: 'warning.main', fontSize: 20 }} />
-                          </Tooltip>
-                        )}
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        {node.role === 'manager' ? (
-                          <>
-                            <LeaderIcon sx={{ mr: 0.5, fontSize: 18 }} />
-                            Manager
-                          </>
-                        ) : (
-                          <>
-                            <WorkerIcon sx={{ mr: 0.5, fontSize: 18 }} />
-                            Worker
-                          </>
-                        )}
-                      </Box>
-                    </TableCell>
-                    <TableCell>{getStatusChip(node.state)}</TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        {getAvailabilityIcon(node.availability)}
-                        <Typography variant="body2" sx={{ ml: 0.5 }}>
-                          {node.availability}
-                        </Typography>
-                      </Box>
-                    </TableCell>
-                    <TableCell>{node.engine_version || '-'}</TableCell>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
-                        {node.addr}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      {formatDistanceToNow(new Date(node.updated_at), { addSuffix: true })}
-                    </TableCell>
-                    <TableCell align="right">
-                      <IconButton
-                        size="small"
-                        onClick={(e) => handleMenuOpen(e, node)}
-                      >
-                        <MoreIcon />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </CardContent>
-      </Card>
-
-      {/* Actions Menu */}
-      <Menu
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
-        onClose={handleMenuClose}
-      >
-        <MenuItem onClick={handleUpdateClick}>Update Node</MenuItem>
-        <MenuItem onClick={handleRemoveClick}>Remove Node</MenuItem>
-      </Menu>
-
-      {/* Update Node Dialog */}
-      <Dialog open={updateDialogOpen} onClose={() => setUpdateDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Update Node</DialogTitle>
-        <DialogContent>
-          <Box sx={{ mt: 2 }}>
-            <FormControl fullWidth sx={{ mb: 2 }}>
-              <InputLabel>Availability</InputLabel>
-              <Select
-                value={availability}
-                onChange={(e) => setAvailability(e.target.value)}
-                label="Availability"
+    <>
+      {/* Page Title */}
+      <div className="row">
+        <div className="col-12">
+          <div className="page-title-box">
+            <div className="page-title-right">
+              <button
+                className="btn btn-secondary me-2"
+                onClick={() => refetch()}
               >
-                <MenuItem value="active">Active</MenuItem>
-                <MenuItem value="pause">Pause</MenuItem>
-                <MenuItem value="drain">Drain</MenuItem>
-              </Select>
-            </FormControl>
+                <i className="mdi mdi-refresh me-1"></i>
+                Refresh
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={() => navigate(`/hosts/${hostId}/swarm/join`)}
+              >
+                <i className="mdi mdi-plus me-1"></i>
+                Add Node
+              </button>
+            </div>
+            <h4 className="page-title">
+              <i className="mdi mdi-server-network me-2"></i>
+              Swarm Nodes
+            </h4>
+          </div>
+        </div>
+      </div>
 
-            {selectedNode?.role === 'worker' && (
-              <FormControl fullWidth>
-                <InputLabel>Role</InputLabel>
-                <Select
-                  value={role}
-                  onChange={(e) => setRole(e.target.value)}
-                  label="Role"
+      {/* Nodes Table */}
+      <div className="row">
+        <div className="col-12">
+          <div className="card">
+            <div className="card-body">
+              {nodes.length === 0 ? (
+                <div className="text-center py-4">
+                  <p className="text-muted mb-0">No nodes found</p>
+                  <button
+                    className="btn btn-sm btn-primary mt-2"
+                    onClick={() => navigate(`/hosts/${hostId}/swarm/join`)}
+                  >
+                    Add your first node
+                  </button>
+                </div>
+              ) : (
+                <div className="table-responsive">
+                  <table className="table table-hover mb-0">
+                    <thead>
+                      <tr>
+                        <th>Hostname</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th>Availability</th>
+                        <th>Engine Version</th>
+                        <th>IP Address</th>
+                        <th>Last Updated</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {nodes.map((node) => (
+                        <tr key={node.id}>
+                          <td>
+                            <strong>{node.hostname}</strong>
+                            {node.is_leader && (
+                              <span className="badge bg-warning ms-2">
+                                <i className="mdi mdi-crown me-1"></i>
+                                Leader
+                              </span>
+                            )}
+                          </td>
+                          <td>
+                            {node.role === 'manager' ? (
+                              <span className="text-primary">
+                                <i className="mdi mdi-shield-crown me-1"></i>
+                                Manager
+                              </span>
+                            ) : (
+                              <span className="text-info">
+                                <i className="mdi mdi-worker me-1"></i>
+                                Worker
+                              </span>
+                            )}
+                          </td>
+                          <td>{getStatusBadge(node.state)}</td>
+                          <td>{getAvailabilityBadge(node.availability)}</td>
+                          <td>{node.engine_version || '-'}</td>
+                          <td>
+                            <code className="text-muted">{node.addr}</code>
+                          </td>
+                          <td>
+                            <small>{formatDistanceToNow(new Date(node.updated_at), { addSuffix: true })}</small>
+                          </td>
+                          <td>
+                            <div className="btn-group btn-group-sm">
+                              <button
+                                className="btn btn-light"
+                                onClick={() => handleUpdateClick(node)}
+                                title="Update Node"
+                              >
+                                <i className="mdi mdi-pencil"></i>
+                              </button>
+                              <button
+                                className="btn btn-light text-danger"
+                                onClick={() => handleRemoveClick(node)}
+                                title="Remove Node"
+                              >
+                                <i className="mdi mdi-delete"></i>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Update Node Modal */}
+      {showUpdateModal && (
+        <div className="modal show d-block" tabIndex={-1}>
+          <div className="modal-dialog">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Update Node</h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => setShowUpdateModal(false)}
+                ></button>
+              </div>
+              <div className="modal-body">
+                <div className="mb-3">
+                  <label className="form-label">Availability</label>
+                  <select
+                    className="form-select"
+                    value={availability}
+                    onChange={(e) => setAvailability(e.target.value)}
+                  >
+                    <option value="active">Active</option>
+                    <option value="pause">Pause</option>
+                    <option value="drain">Drain</option>
+                  </select>
+                </div>
+
+                {selectedNode?.role === 'worker' && (
+                  <div className="mb-3">
+                    <label className="form-label">Role</label>
+                    <select
+                      className="form-select"
+                      value={role}
+                      onChange={(e) => setRole(e.target.value)}
+                    >
+                      <option value="worker">Worker</option>
+                      <option value="manager">Manager</option>
+                    </select>
+                  </div>
+                )}
+              </div>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setShowUpdateModal(false)}
                 >
-                  <MenuItem value="worker">Worker</MenuItem>
-                  <MenuItem value="manager">Manager</MenuItem>
-                </Select>
-              </FormControl>
-            )}
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setUpdateDialogOpen(false)}>Cancel</Button>
-          <Button
-            variant="contained"
-            onClick={handleUpdateNode}
-            disabled={updateNode.isPending}
-          >
-            {updateNode.isPending ? 'Updating...' : 'Update'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleUpdateNode}
+                  disabled={updateNode.isPending}
+                >
+                  {updateNode.isPending ? 'Updating...' : 'Update'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
-      {/* Remove Node Dialog */}
-      <Dialog open={removeDialogOpen} onClose={() => setRemoveDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Remove Node</DialogTitle>
-        <DialogContent>
-          <Alert severity="warning" sx={{ mb: 2 }}>
-            This will remove the node from the swarm. Any tasks running on this node will be rescheduled.
-          </Alert>
-          <Typography>
-            Are you sure you want to remove node <strong>{selectedNode?.hostname}</strong>?
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setRemoveDialogOpen(false)}>Cancel</Button>
-          <Button
-            color="warning"
-            onClick={() => handleRemoveNode(false)}
-            disabled={removeNode.isPending}
-          >
-            Remove
-          </Button>
-          <Button
-            color="error"
-            onClick={() => handleRemoveNode(true)}
-            disabled={removeNode.isPending}
-          >
-            Force Remove
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
-  );
+      {/* Remove Node Modal */}
+      {showRemoveModal && (
+        <div className="modal show d-block" tabIndex={-1}>
+          <div className="modal-dialog">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Remove Node</h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => setShowRemoveModal(false)}
+                ></button>
+              </div>
+              <div className="modal-body">
+                <div className="alert alert-warning">
+                  This will remove the node from the swarm. Any tasks running on this node will be rescheduled.
+                </div>
+                <p>
+                  Are you sure you want to remove node <strong>{selectedNode?.hostname}</strong>?
+                </p>
+              </div>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setShowRemoveModal(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-warning"
+                  onClick={() => handleRemoveNode(false)}
+                  disabled={removeNode.isPending}
+                >
+                  Remove
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                  onClick={() => handleRemoveNode(true)}
+                  disabled={removeNode.isPending}
+                >
+                  Force Remove
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Backdrop */}
+      {(showUpdateModal || showRemoveModal) && (
+        <div className="modal-backdrop fade show"></div>
+      )}
+    </>
+  )
 }

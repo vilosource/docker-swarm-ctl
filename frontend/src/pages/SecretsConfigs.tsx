@@ -1,430 +1,364 @@
-import React, { useState } from 'react';
-import { useParams } from 'react-router-dom';
-import {
-  Box,
-  Card,
-  CardContent,
-  Typography,
-  Button,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Chip,
-  IconButton,
-  Tabs,
-  Tab,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Alert,
-  CircularProgress,
-  Tooltip,
-} from '@mui/material';
-import {
-  Add as AddIcon,
-  Delete as DeleteIcon,
-  Refresh as RefreshIcon,
-  VpnKey as SecretIcon,
-  Settings as ConfigIcon,
-  ContentCopy as CopyIcon,
-} from '@mui/icons-material';
-import { useSecrets, useCreateSecret, useRemoveSecret } from '../hooks/useSecrets';
-import { useConfigs, useCreateConfig, useRemoveConfig } from '../hooks/useConfigs';
-import { formatDistanceToNow } from 'date-fns';
-
-interface TabPanelProps {
-  children?: React.ReactNode;
-  index: number;
-  value: number;
-}
-
-function TabPanel(props: TabPanelProps) {
-  const { children, value, index, ...other } = props;
-  return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`tabpanel-${index}`}
-      aria-labelledby={`tab-${index}`}
-      {...other}
-    >
-      {value === index && <Box sx={{ pt: 3 }}>{children}</Box>}
-    </div>
-  );
-}
+import { useState } from 'react'
+import { useParams } from 'react-router-dom'
+import { useSecrets, useCreateSecret, useRemoveSecret } from '../hooks/useSecrets'
+import { useConfigs, useCreateConfig, useRemoveConfig } from '../hooks/useConfigs'
+import { formatDistanceToNow } from 'date-fns'
 
 export default function SecretsConfigs() {
-  const { hostId } = useParams<{ hostId: string }>();
-  const [tabValue, setTabValue] = useState(0);
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<any>(null);
-  const [newItemName, setNewItemName] = useState('');
-  const [newItemData, setNewItemData] = useState('');
+  const { hostId } = useParams<{ hostId: string }>()
+  const [activeTab, setActiveTab] = useState<'secrets' | 'configs'>('secrets')
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [selectedItem, setSelectedItem] = useState<any>(null)
+  const [newItemName, setNewItemName] = useState('')
+  const [newItemData, setNewItemData] = useState('')
 
-  const { data: secretsData, isLoading: secretsLoading, refetch: refetchSecrets } = useSecrets(hostId || '');
-  const { data: configsData, isLoading: configsLoading, refetch: refetchConfigs } = useConfigs(hostId || '');
+  const { data: secretsData, isLoading: secretsLoading, refetch: refetchSecrets } = useSecrets(hostId || '')
+  const { data: configsData, isLoading: configsLoading, refetch: refetchConfigs } = useConfigs(hostId || '')
   
-  const createSecret = useCreateSecret();
-  const removeSecret = useRemoveSecret();
-  const createConfig = useCreateConfig();
-  const removeConfig = useRemoveConfig();
+  const createSecret = useCreateSecret()
+  const removeSecret = useRemoveSecret()
+  const createConfig = useCreateConfig()
+  const removeConfig = useRemoveConfig()
 
-  const isSecrets = tabValue === 0;
-  const data = isSecrets ? secretsData : configsData;
-  const items = data ? (isSecrets ? data.secrets : data.configs) : [];
-  const isLoading = isSecrets ? secretsLoading : configsLoading;
+  const isSecrets = activeTab === 'secrets'
+  const data = isSecrets ? secretsData : configsData
+  const items = data ? (isSecrets ? data.secrets : data.configs) : []
+  const isLoading = isSecrets ? secretsLoading : configsLoading
 
   const handleCreate = async () => {
-    if (!hostId || !newItemName || !newItemData) return;
+    if (!hostId || !newItemName || !newItemData) return
 
-    const encodedData = btoa(newItemData); // Base64 encode
+    const encodedData = btoa(newItemData) // Base64 encode
 
     try {
       if (isSecrets) {
         await createSecret.mutateAsync({
           hostId,
           data: { name: newItemName, data: encodedData }
-        });
+        })
       } else {
         await createConfig.mutateAsync({
           hostId,
           data: { name: newItemName, data: encodedData }
-        });
+        })
       }
-      setCreateDialogOpen(false);
-      setNewItemName('');
-      setNewItemData('');
+      setShowCreateModal(false)
+      setNewItemName('')
+      setNewItemData('')
     } catch (error) {
-      console.error(`Failed to create ${isSecrets ? 'secret' : 'config'}:`, error);
+      console.error(`Failed to create ${isSecrets ? 'secret' : 'config'}:`, error)
     }
-  };
+  }
 
   const handleDelete = async () => {
-    if (!hostId || !selectedItem) return;
+    if (!hostId || !selectedItem) return
 
     try {
       if (isSecrets) {
         await removeSecret.mutateAsync({
           hostId,
           secretId: selectedItem.ID
-        });
+        })
       } else {
         await removeConfig.mutateAsync({
           hostId,
           configId: selectedItem.ID
-        });
+        })
       }
-      setDeleteDialogOpen(false);
-      setSelectedItem(null);
+      setShowDeleteModal(false)
+      setSelectedItem(null)
     } catch (error) {
-      console.error(`Failed to delete ${isSecrets ? 'secret' : 'config'}:`, error);
+      console.error(`Failed to delete ${isSecrets ? 'secret' : 'config'}:`, error)
     }
-  };
+  }
 
   const handleCopyId = (id: string) => {
-    navigator.clipboard.writeText(id);
-  };
+    navigator.clipboard.writeText(id)
+  }
 
   if (!hostId) {
     return (
-      <Box sx={{ p: 3 }}>
-        <Alert severity="error">No host ID provided</Alert>
-      </Box>
-    );
+      <div className="row">
+        <div className="col-12">
+          <div className="alert alert-danger">No host ID provided</div>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4">
-          Secrets & Configs
-        </Typography>
-        <Box>
-          <Button
-            variant="outlined"
-            startIcon={<RefreshIcon />}
-            onClick={() => isSecrets ? refetchSecrets() : refetchConfigs()}
-            sx={{ mr: 2 }}
-          >
-            Refresh
-          </Button>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => setCreateDialogOpen(true)}
-          >
-            Create {isSecrets ? 'Secret' : 'Config'}
-          </Button>
-        </Box>
-      </Box>
+    <>
+      {/* Page Title */}
+      <div className="row">
+        <div className="col-12">
+          <div className="page-title-box">
+            <div className="page-title-right">
+              <button
+                className="btn btn-secondary me-2"
+                onClick={() => isSecrets ? refetchSecrets() : refetchConfigs()}
+              >
+                <i className="mdi mdi-refresh me-1"></i>
+                Refresh
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={() => setShowCreateModal(true)}
+              >
+                <i className="mdi mdi-plus me-1"></i>
+                Create {isSecrets ? 'Secret' : 'Config'}
+              </button>
+            </div>
+            <h4 className="page-title">Secrets & Configs</h4>
+          </div>
+        </div>
+      </div>
 
-      <Card>
-        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-          <Tabs value={tabValue} onChange={(_, newValue) => setTabValue(newValue)}>
-            <Tab icon={<SecretIcon />} label="Secrets" />
-            <Tab icon={<ConfigIcon />} label="Configs" />
-          </Tabs>
-        </Box>
+      {/* Tabs and Content */}
+      <div className="row">
+        <div className="col-12">
+          <div className="card">
+            <div className="card-body">
+              {/* Tabs */}
+              <ul className="nav nav-tabs nav-bordered mb-3">
+                <li className="nav-item">
+                  <a
+                    href="#"
+                    className={`nav-link ${activeTab === 'secrets' ? 'active' : ''}`}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      setActiveTab('secrets')
+                    }}
+                  >
+                    <i className="mdi mdi-key-variant me-1"></i>
+                    Secrets
+                  </a>
+                </li>
+                <li className="nav-item">
+                  <a
+                    href="#"
+                    className={`nav-link ${activeTab === 'configs' ? 'active' : ''}`}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      setActiveTab('configs')
+                    }}
+                  >
+                    <i className="mdi mdi-cog me-1"></i>
+                    Configs
+                  </a>
+                </li>
+              </ul>
 
-        <CardContent>
-          <TabPanel value={tabValue} index={0}>
-            {secretsLoading ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-                <CircularProgress />
-              </Box>
-            ) : secretsData?.secrets.length === 0 ? (
-              <Box sx={{ textAlign: 'center', py: 4 }}>
-                <Typography color="text.secondary" gutterBottom>
-                  No secrets found
-                </Typography>
-                <Button
-                  variant="outlined"
-                  startIcon={<AddIcon />}
-                  onClick={() => setCreateDialogOpen(true)}
+              {/* Tab Content */}
+              {isLoading ? (
+                <div className="d-flex justify-content-center py-4">
+                  <div className="spinner-border" role="status">
+                    <span className="visually-hidden">Loading...</span>
+                  </div>
+                </div>
+              ) : items.length === 0 ? (
+                <div className="text-center py-4">
+                  <p className="text-muted mb-0">No {isSecrets ? 'secrets' : 'configs'} found</p>
+                  <button
+                    className="btn btn-sm btn-primary mt-2"
+                    onClick={() => setShowCreateModal(true)}
+                  >
+                    Create your first {isSecrets ? 'secret' : 'config'}
+                  </button>
+                </div>
+              ) : (
+                <div className="table-responsive">
+                  <table className="table table-hover mb-0">
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>ID</th>
+                        <th>Created</th>
+                        <th>Labels</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {items.map((item) => (
+                        <tr key={item.ID}>
+                          <td>
+                            <strong>{item.Spec.Name}</strong>
+                          </td>
+                          <td>
+                            <div className="d-flex align-items-center">
+                              <code className="text-muted">
+                                {item.ID.substring(0, 12)}...
+                              </code>
+                              <button
+                                className="btn btn-sm btn-light ms-2"
+                                onClick={() => handleCopyId(item.ID)}
+                                title="Copy full ID"
+                              >
+                                <i className="mdi mdi-content-copy"></i>
+                              </button>
+                            </div>
+                          </td>
+                          <td>
+                            <small>{formatDistanceToNow(new Date(item.CreatedAt), { addSuffix: true })}</small>
+                          </td>
+                          <td>
+                            {item.Spec.Labels && Object.keys(item.Spec.Labels).length > 0 ? (
+                              Object.entries(item.Spec.Labels).map(([key, value]) => (
+                                <span
+                                  key={key}
+                                  className="badge bg-light text-dark me-1"
+                                >
+                                  {key}: {value}
+                                </span>
+                              ))
+                            ) : (
+                              '-'
+                            )}
+                          </td>
+                          <td>
+                            <button
+                              className="btn btn-sm btn-light text-danger"
+                              onClick={() => {
+                                setSelectedItem(item)
+                                setShowDeleteModal(true)
+                              }}
+                              title="Delete"
+                            >
+                              <i className="mdi mdi-delete"></i>
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Create Modal */}
+      {showCreateModal && (
+        <div className="modal show d-block" tabIndex={-1}>
+          <div className="modal-dialog">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Create {isSecrets ? 'Secret' : 'Config'}</h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => {
+                    setShowCreateModal(false)
+                    setNewItemName('')
+                    setNewItemData('')
+                  }}
+                ></button>
+              </div>
+              <div className="modal-body">
+                <div className="mb-3">
+                  <label className="form-label">Name</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={newItemName}
+                    onChange={(e) => setNewItemName(e.target.value)}
+                    placeholder="Enter a unique name"
+                  />
+                </div>
+                <div className="mb-3">
+                  <label className="form-label">Data</label>
+                  <textarea
+                    className="form-control"
+                    rows={4}
+                    value={newItemData}
+                    onChange={(e) => setNewItemData(e.target.value)}
+                    placeholder={isSecrets ? 
+                      "Enter sensitive data that will be encrypted and stored securely" : 
+                      "Enter configuration data that will be available to services"
+                    }
+                  />
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setShowCreateModal(false)
+                    setNewItemName('')
+                    setNewItemData('')
+                  }}
                 >
-                  Create your first secret
-                </Button>
-              </Box>
-            ) : (
-              <TableContainer component={Paper} variant="outlined">
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Name</TableCell>
-                      <TableCell>ID</TableCell>
-                      <TableCell>Created</TableCell>
-                      <TableCell>Labels</TableCell>
-                      <TableCell align="right">Actions</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {secretsData?.secrets.map((secret) => (
-                      <TableRow key={secret.ID}>
-                        <TableCell>
-                          <Typography variant="body2" fontWeight="medium">
-                            {secret.Spec.Name}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                            <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.875rem' }}>
-                              {secret.ID.substring(0, 12)}...
-                            </Typography>
-                            <Tooltip title="Copy full ID">
-                              <IconButton size="small" onClick={() => handleCopyId(secret.ID)}>
-                                <CopyIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                          </Box>
-                        </TableCell>
-                        <TableCell>
-                          {formatDistanceToNow(new Date(secret.CreatedAt), { addSuffix: true })}
-                        </TableCell>
-                        <TableCell>
-                          {secret.Spec.Labels && Object.keys(secret.Spec.Labels).length > 0 ? (
-                            Object.entries(secret.Spec.Labels).map(([key, value]) => (
-                              <Chip
-                                key={key}
-                                label={`${key}: ${value}`}
-                                size="small"
-                                variant="outlined"
-                                sx={{ mr: 0.5 }}
-                              />
-                            ))
-                          ) : (
-                            '-'
-                          )}
-                        </TableCell>
-                        <TableCell align="right">
-                          <IconButton
-                            size="small"
-                            color="error"
-                            onClick={() => {
-                              setSelectedItem(secret);
-                              setDeleteDialogOpen(true);
-                            }}
-                          >
-                            <DeleteIcon />
-                          </IconButton>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
-          </TabPanel>
-
-          <TabPanel value={tabValue} index={1}>
-            {configsLoading ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-                <CircularProgress />
-              </Box>
-            ) : configsData?.configs.length === 0 ? (
-              <Box sx={{ textAlign: 'center', py: 4 }}>
-                <Typography color="text.secondary" gutterBottom>
-                  No configs found
-                </Typography>
-                <Button
-                  variant="outlined"
-                  startIcon={<AddIcon />}
-                  onClick={() => setCreateDialogOpen(true)}
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleCreate}
+                  disabled={!newItemName || !newItemData || createSecret.isPending || createConfig.isPending}
                 >
-                  Create your first config
-                </Button>
-              </Box>
-            ) : (
-              <TableContainer component={Paper} variant="outlined">
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Name</TableCell>
-                      <TableCell>ID</TableCell>
-                      <TableCell>Created</TableCell>
-                      <TableCell>Labels</TableCell>
-                      <TableCell align="right">Actions</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {configsData?.configs.map((config) => (
-                      <TableRow key={config.ID}>
-                        <TableCell>
-                          <Typography variant="body2" fontWeight="medium">
-                            {config.Spec.Name}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                            <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.875rem' }}>
-                              {config.ID.substring(0, 12)}...
-                            </Typography>
-                            <Tooltip title="Copy full ID">
-                              <IconButton size="small" onClick={() => handleCopyId(config.ID)}>
-                                <CopyIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                          </Box>
-                        </TableCell>
-                        <TableCell>
-                          {formatDistanceToNow(new Date(config.CreatedAt), { addSuffix: true })}
-                        </TableCell>
-                        <TableCell>
-                          {config.Spec.Labels && Object.keys(config.Spec.Labels).length > 0 ? (
-                            Object.entries(config.Spec.Labels).map(([key, value]) => (
-                              <Chip
-                                key={key}
-                                label={`${key}: ${value}`}
-                                size="small"
-                                variant="outlined"
-                                sx={{ mr: 0.5 }}
-                              />
-                            ))
-                          ) : (
-                            '-'
-                          )}
-                        </TableCell>
-                        <TableCell align="right">
-                          <IconButton
-                            size="small"
-                            color="error"
-                            onClick={() => {
-                              setSelectedItem(config);
-                              setDeleteDialogOpen(true);
-                            }}
-                          >
-                            <DeleteIcon />
-                          </IconButton>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
-          </TabPanel>
-        </CardContent>
-      </Card>
+                  {(createSecret.isPending || createConfig.isPending) ? 'Creating...' : 'Create'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
-      {/* Create Dialog */}
-      <Dialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Create {isSecrets ? 'Secret' : 'Config'}</DialogTitle>
-        <DialogContent>
-          <Box sx={{ mt: 2 }}>
-            <TextField
-              fullWidth
-              label="Name"
-              value={newItemName}
-              onChange={(e) => setNewItemName(e.target.value)}
-              sx={{ mb: 2 }}
-              helperText="A unique name for this resource"
-            />
-            <TextField
-              fullWidth
-              multiline
-              rows={4}
-              label="Data"
-              value={newItemData}
-              onChange={(e) => setNewItemData(e.target.value)}
-              helperText={isSecrets ? 
-                "Enter sensitive data that will be encrypted and stored securely" : 
-                "Enter configuration data that will be available to services"
-              }
-            />
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => {
-            setCreateDialogOpen(false);
-            setNewItemName('');
-            setNewItemData('');
-          }}>
-            Cancel
-          </Button>
-          <Button
-            variant="contained"
-            onClick={handleCreate}
-            disabled={!newItemName || !newItemData || createSecret.isPending || createConfig.isPending}
-          >
-            {(createSecret.isPending || createConfig.isPending) ? 'Creating...' : 'Create'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      {/* Delete Modal */}
+      {showDeleteModal && (
+        <div className="modal show d-block" tabIndex={-1}>
+          <div className="modal-dialog">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Delete {isSecrets ? 'Secret' : 'Config'}</h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => {
+                    setShowDeleteModal(false)
+                    setSelectedItem(null)
+                  }}
+                ></button>
+              </div>
+              <div className="modal-body">
+                <div className="alert alert-warning">
+                  This action cannot be undone. Services using this {isSecrets ? 'secret' : 'config'} may fail.
+                </div>
+                <p>
+                  Are you sure you want to delete <strong>{selectedItem?.Spec.Name}</strong>?
+                </p>
+              </div>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setShowDeleteModal(false)
+                    setSelectedItem(null)
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                  onClick={handleDelete}
+                  disabled={removeSecret.isPending || removeConfig.isPending}
+                >
+                  {(removeSecret.isPending || removeConfig.isPending) ? 'Deleting...' : 'Delete'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
-      {/* Delete Dialog */}
-      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Delete {isSecrets ? 'Secret' : 'Config'}</DialogTitle>
-        <DialogContent>
-          <Alert severity="warning" sx={{ mb: 2 }}>
-            This action cannot be undone. Services using this {isSecrets ? 'secret' : 'config'} may fail.
-          </Alert>
-          <Typography>
-            Are you sure you want to delete <strong>{selectedItem?.Spec.Name}</strong>?
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => {
-            setDeleteDialogOpen(false);
-            setSelectedItem(null);
-          }}>
-            Cancel
-          </Button>
-          <Button
-            color="error"
-            variant="contained"
-            onClick={handleDelete}
-            disabled={removeSecret.isPending || removeConfig.isPending}
-          >
-            {(removeSecret.isPending || removeConfig.isPending) ? 'Deleting...' : 'Delete'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
-  );
+      {/* Modal Backdrop */}
+      {(showCreateModal || showDeleteModal) && (
+        <div className="modal-backdrop fade show"></div>
+      )}
+    </>
+  )
 }
