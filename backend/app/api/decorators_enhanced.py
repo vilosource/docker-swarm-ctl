@@ -14,6 +14,7 @@ from app.core.exceptions import (
     DockerOperationError,
     ValidationError,
     ResourceNotFoundError,
+    ResourceConflictError,
     ExternalServiceError
 )
 from app.services.audit import AuditService
@@ -43,21 +44,27 @@ def handle_api_errors(
             try:
                 result = await func(*args, **kwargs)
                 return result
+            except HTTPException:
+                # Let HTTPException pass through unchanged
+                raise
             except AuthorizationError as e:
                 logger.warning(f"{op_name} failed - Authorization: {e}")
-                raise HTTPException(status_code=403, detail=str(e))
+                raise HTTPException(status_code=403, detail=e.message)
             except DockerOperationError as e:
                 logger.error(f"{op_name} failed - Docker operation: {e}")
-                raise HTTPException(status_code=400, detail=str(e))
+                raise HTTPException(status_code=400, detail=e.message)
             except ResourceNotFoundError as e:
                 logger.warning(f"{op_name} failed - Not found: {e}")
-                raise HTTPException(status_code=404, detail=str(e))
+                raise HTTPException(status_code=404, detail=e.message)
+            except ResourceConflictError as e:
+                logger.warning(f"{op_name} failed - Conflict: {e}")
+                raise HTTPException(status_code=409, detail=e.message)
             except ValidationError as e:
                 logger.warning(f"{op_name} failed - Validation: {e}")
-                raise HTTPException(status_code=422, detail=str(e))
+                raise HTTPException(status_code=422, detail=e.message)
             except ExternalServiceError as e:
                 logger.error(f"{op_name} failed - External service: {e}")
-                raise HTTPException(status_code=502, detail=str(e))
+                raise HTTPException(status_code=502, detail=e.message)
             except Exception as e:
                 logger.error(f"{op_name} failed - Unexpected error: {e}", exc_info=True)
                 raise HTTPException(

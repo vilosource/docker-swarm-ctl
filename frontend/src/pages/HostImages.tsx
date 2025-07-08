@@ -7,12 +7,21 @@ import { Image } from '@/types'
 import { formatBytes, formatDate } from '@/utils/format'
 import { useAuthStore } from '@/store/authStore'
 import PageTitle from '@/components/common/PageTitle'
+import { useToast } from '@/hooks/useToast'
+import ConfirmDialog from '@/components/common/ConfirmDialog'
 
 export default function HostImages() {
   const { hostId } = useParams<{ hostId: string }>()
   const queryClient = useQueryClient()
   const user = useAuthStore((state) => state.user)
   const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set())
+  const { showToast } = useToast()
+  const [confirmDialog, setConfirmDialog] = useState<{
+    show: boolean
+    title: string
+    message: string
+    onConfirm: () => void
+  }>({ show: false, title: '', message: '', onConfirm: () => {} })
   
   const canManageImages = user?.role === 'admin' || user?.role === 'operator'
   
@@ -38,37 +47,48 @@ export default function HostImages() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['images', hostId] })
       setSelectedImages(new Set())
+      showToast('Image removed successfully', 'success')
     },
     onError: (error: any) => {
       const errorMessage = error.response?.data?.detail || error.message || 'Failed to remove image'
-      alert(errorMessage)
+      showToast(errorMessage, 'error')
     },
   })
   
-  const handleRemove = async (image: Image) => {
+  const handleRemove = (image: Image) => {
     const name = image.tags[0] || image.id.substring(0, 12)
-    if (confirm(`Are you sure you want to remove image ${name}?`)) {
-      try {
-        await removeMutation.mutateAsync({ id: image.id })
-      } catch (error) {
-        // Error is already handled by onError in the mutation
-      }
-    }
-  }
-  
-  const handleRemoveSelected = async () => {
-    if (selectedImages.size === 0) return
-    
-    if (confirm(`Are you sure you want to remove ${selectedImages.size} selected images?`)) {
-      for (const imageId of selectedImages) {
+    setConfirmDialog({
+      show: true,
+      title: 'Remove Image',
+      message: `Are you sure you want to remove image ${name}?`,
+      onConfirm: async () => {
         try {
-          await removeMutation.mutateAsync({ id: imageId })
+          await removeMutation.mutateAsync({ id: image.id })
         } catch (error) {
           // Error is already handled by onError in the mutation
-          // Continue with next image
         }
       }
-    }
+    })
+  }
+  
+  const handleRemoveSelected = () => {
+    if (selectedImages.size === 0) return
+    
+    setConfirmDialog({
+      show: true,
+      title: 'Remove Selected Images',
+      message: `Are you sure you want to remove ${selectedImages.size} selected images?`,
+      onConfirm: async () => {
+        for (const imageId of selectedImages) {
+          try {
+            await removeMutation.mutateAsync({ id: imageId })
+          } catch (error) {
+            // Error is already handled by onError in the mutation
+            // Continue with next image
+          }
+        }
+      }
+    })
   }
   
   const toggleImageSelection = (imageId: string) => {
@@ -225,6 +245,16 @@ export default function HostImages() {
           </div>
         </div>
       </div>
+      
+      <ConfirmDialog
+        show={confirmDialog.show}
+        onHide={() => setConfirmDialog({ ...confirmDialog, show: false })}
+        onConfirm={confirmDialog.onConfirm}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        confirmText="Remove"
+        confirmVariant="danger"
+      />
     </>
   )
 }

@@ -127,33 +127,8 @@ async def remove_image(
     docker_service: IDockerService = Depends(get_docker_service)
 ):
     """Remove an image from specified or default Docker host"""
-    try:
-        await docker_service.remove_image(image_id, force=force, host_id=host_id)
-        return {"message": f"Image {image_id} removed"}
-    except ResourceConflictError as e:
-        # Image is in use by a container
-        raise HTTPException(
-            status_code=409,
-            detail=e.message
-        )
-    except ResourceNotFoundError as e:
-        # Image not found
-        raise HTTPException(
-            status_code=404,
-            detail=e.message
-        )
-    except DockerOperationError as e:
-        # Other Docker operation errors
-        raise HTTPException(
-            status_code=400,
-            detail=e.message
-        )
-    except Exception as e:
-        # Unexpected errors
-        raise HTTPException(
-            status_code=500,
-            detail=f"Internal error: {str(e)}"
-        )
+    await docker_service.remove_image(image_id, force=force, host_id=host_id)
+    return {"message": f"Image {image_id} removed"}
 
 
 @router.get("/{image_id}/history")

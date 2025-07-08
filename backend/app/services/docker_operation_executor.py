@@ -92,18 +92,33 @@ def docker_operation(operation_name: str):
                 logger.error(f"Docker API error in {operation_name}: {e}")
                 error_msg = str(e)
                 
+                # Try to extract status code from the error
+                status_code = None
+                if hasattr(e, 'response') and hasattr(e.response, 'status_code'):
+                    status_code = e.response.status_code
+                elif hasattr(e, 'status_code'):
+                    status_code = e.status_code
+                
                 # Check for conflict errors (409)
-                if e.response.status_code == 409 or "conflict" in error_msg.lower():
-                    # Extract meaningful error message
+                if status_code == 409 or "conflict" in error_msg.lower():
+                    # Extract meaningful error message for image conflicts
                     if "image is being used by" in error_msg:
-                        # Extract the container information
-                        detail = error_msg.split("(")[-1].rstrip(")")
-                        raise ResourceConflictError("image", f"Cannot delete image: {detail}")
+                        # Parse container info from error message
+                        # Example: "conflict: unable to remove repository reference "nginx:latest" (must force) - container 12345 is using its referenced image 67890"
+                        if "container" in error_msg:
+                            parts = error_msg.split("container")
+                            if len(parts) > 1:
+                                container_info = parts[1].split()[0]  # Get container ID
+                                raise ResourceConflictError("image", f"Cannot remove image because it is being used by container {container_info}")
+                        else:
+                            raise ResourceConflictError("image", "Cannot remove image because it is in use by one or more containers")
+                    elif "must force" in error_msg:
+                        raise ResourceConflictError("image", "Cannot remove image. Use force option to remove")
                     else:
                         raise ResourceConflictError("resource", error_msg)
                 
                 # Check for not found errors (404)
-                elif e.response.status_code == 404 or "no such" in error_msg.lower():
+                elif status_code == 404 or "no such" in error_msg.lower():
                     # Extract resource type and ID if possible
                     if "no such image" in error_msg.lower():
                         image_id = args[0] if args else "unknown"
@@ -114,9 +129,16 @@ def docker_operation(operation_name: str):
                     else:
                         raise ResourceNotFoundError("resource", "unknown")
                 
-                # Other Docker API errors
+                # Other Docker API errors - provide more context
                 else:
-                    raise DockerOperationError(operation_name, str(e))
+                    # Try to extract a meaningful message from the Docker error
+                    if ":" in error_msg:
+                        # Get the part after the last colon which often contains the actual error
+                        detailed_msg = error_msg.split(":")[-1].strip()
+                    else:
+                        detailed_msg = error_msg
+                    
+                    raise DockerOperationError(operation_name, f"Docker API error: {detailed_msg}")
                     
             except DockerException as e:
                 # Other Docker exceptions (connection errors, etc.)

@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
 import Layout from '@/components/layout/Layout'
 import ProtectedRoute from '@/components/auth/ProtectedRoute'
+import ToastContainer from '@/components/common/ToastContainer'
 import Login from '@/pages/Login'
 import Dashboard from '@/pages/Dashboard'
 import Containers from '@/pages/Containers'
@@ -30,7 +31,9 @@ function App() {
   const isAuthenticated = useAuthStore((state) => !!state.token)
 
   return (
-    <Routes>
+    <>
+      <ToastContainer />
+      <Routes>
       <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to="/" />} />
       
       <Route element={<ProtectedRoute />}>
@@ -63,6 +66,7 @@ function App() {
       
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>
+    </>
   )
 }
 
