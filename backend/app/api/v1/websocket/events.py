@@ -255,7 +255,10 @@ async def docker_events(
         "image": ["image_name"]
     }
     """
-    await event_manager.connect(websocket)
+    # TODO: Fix this - ConnectionManager expects container_id and username
+    # but events are not container-specific. Need a separate EventConnectionManager
+    # For now, just accept the connection directly
+    await websocket.accept()
     
     # Authenticate user
     current_user = await get_current_user_ws(websocket, token)
@@ -305,5 +308,7 @@ async def docker_events(
     finally:
         # Clean up
         await event_broadcaster.unsubscribe(websocket)
-        event_manager.disconnect(websocket)
+        # TODO: Fix this when we have proper EventConnectionManager
+        # event_manager.disconnect(websocket)
+        pass
         logger.info(f"Client disconnected from events stream")
