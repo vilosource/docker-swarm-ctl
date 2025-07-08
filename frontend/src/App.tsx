@@ -21,6 +21,10 @@ import HostImages from '@/pages/HostImages'
 import HostVolumes from '@/pages/HostVolumes'
 import HostNetworks from '@/pages/HostNetworks'
 import HostSystem from '@/pages/HostSystem'
+import SwarmOverview from '@/pages/SwarmOverview'
+import Nodes from '@/pages/Nodes'
+import Services from '@/pages/Services'
+import SecretsConfigs from '@/pages/SecretsConfigs'
 
 function App() {
   const isAuthenticated = useAuthStore((state) => !!state.token)
@@ -49,6 +53,10 @@ function App() {
           <Route path="/hosts/:hostId/volumes" element={<HostVolumes />} />
           <Route path="/hosts/:hostId/networks" element={<HostNetworks />} />
           <Route path="/hosts/:hostId/system" element={<HostSystem />} />
+          <Route path="/hosts/:hostId/swarm" element={<SwarmOverview />} />
+          <Route path="/hosts/:hostId/nodes" element={<Nodes />} />
+          <Route path="/hosts/:hostId/services" element={<Services />} />
+          <Route path="/hosts/:hostId/secrets-configs" element={<SecretsConfigs />} />
           <Route path="/profile" element={<Profile />} />
         </Route>
       </Route>

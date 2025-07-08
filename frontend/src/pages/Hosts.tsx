@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { hostsApi } from '@/api/hosts'
@@ -13,6 +13,7 @@ export default function Hosts() {
   const { user } = useAuthStore()
   const { showToast } = useToast()
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingHost, setEditingHost] = useState<DockerHost | null>(null)
 
@@ -204,6 +205,13 @@ export default function Hosts() {
                           </td>
                           <td>
                             <div className="btn-group btn-group-sm" role="group">
+                              <button
+                                className="btn btn-light"
+                                onClick={() => navigate(`/hosts/${host.id}/swarm`)}
+                                title="Swarm"
+                              >
+                                <i className="mdi mdi-cloud"></i>
+                              </button>
                               <button
                                 className="btn btn-light"
                                 onClick={() => testConnectionMutation.mutate(host.id)}
