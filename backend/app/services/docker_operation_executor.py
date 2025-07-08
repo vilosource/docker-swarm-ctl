@@ -1016,7 +1016,6 @@ class DockerOperationExecutor:
         data: bytes,
         labels: Optional[Dict[str, str]] = None,
         driver: Optional[Dict[str, Any]] = None,
-        templating: Optional[Dict[str, Any]] = None,
         host_id: Optional[str] = None
     ) -> tuple[Any, str]:
         """Create a swarm secret"""
@@ -1025,8 +1024,7 @@ class DockerOperationExecutor:
                 name=name,
                 data=data,
                 labels=labels,
-                driver=driver,
-                templating=templating
+                driver=driver
             )
             return secret, resolved_host_id
     
@@ -1070,7 +1068,6 @@ class DockerOperationExecutor:
         name: str,
         data: bytes,
         labels: Optional[Dict[str, str]] = None,
-        templating: Optional[Dict[str, Any]] = None,
         host_id: Optional[str] = None
     ) -> tuple[Any, str]:
         """Create a swarm config"""
@@ -1078,8 +1075,7 @@ class DockerOperationExecutor:
             config = client.configs.create(
                 name=name,
                 data=data,
-                labels=labels,
-                templating=templating
+                labels=labels
             )
             return config, resolved_host_id
     

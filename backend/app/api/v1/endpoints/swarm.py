@@ -38,11 +38,18 @@ async def get_swarm_info(
     """Get swarm information from specified host"""
     try:
         swarm_attrs = await docker_service.get_swarm_info(host_id)
+        # Just return the raw attrs, let Pydantic handle the conversion
         return SwarmInfo(**swarm_attrs)
     except DockerOperationError as e:
-        if "This node is not a swarm manager" in str(e):
-            raise HTTPException(status_code=400, detail="Host is not part of a swarm")
+        error_msg = str(e)
+        if "This node is not a swarm manager" in error_msg:
+            raise HTTPException(status_code=400, detail="Host is not a swarm manager")
+        elif "not part of a swarm" in error_msg.lower():
+            raise HTTPException(status_code=404, detail="Host is not part of a swarm")
         raise
+    except Exception as e:
+        logger.error(f"Failed to get swarm info: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get swarm info: {str(e)}")
 
 
 @router.post("/init", response_model=SwarmInfo)

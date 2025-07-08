@@ -22,12 +22,15 @@ class SwarmSpec(BaseModel):
 class SwarmInfo(BaseModel):
     """Swarm information response"""
     id: str = Field(..., alias="ID")
-    created_at: datetime = Field(..., alias="CreatedAt")
-    updated_at: datetime = Field(..., alias="UpdatedAt")
-    spec: SwarmSpec = Field(..., alias="Spec")
-    version: Dict[str, int] = Field(..., alias="Version")
-    join_tokens: Dict[str, str] = Field(..., alias="JoinTokens")
-    root_ca_cert: str = Field(..., alias="RootCACert", description="Root CA certificate (PEM format)")
+    created_at: Optional[datetime] = Field(None, alias="CreatedAt")
+    updated_at: Optional[datetime] = Field(None, alias="UpdatedAt")
+    spec: Optional[SwarmSpec] = Field(None, alias="Spec")
+    version: Optional[Dict[str, int]] = Field(None, alias="Version")
+    join_tokens: Optional[Dict[str, str]] = Field(None, alias="JoinTokens")
+    root_ca_cert: Optional[str] = Field(None, alias="RootCACert", description="Root CA certificate (PEM format)")
+    root_rotation_in_progress: Optional[bool] = Field(None, alias="RootRotationInProgress")
+    tls_info: Optional[Dict] = Field(None, alias="TLSInfo")
+    cluster_info: Optional[Dict] = Field(None, alias="ClusterInfo")
     
     class Config:
         populate_by_name = True
