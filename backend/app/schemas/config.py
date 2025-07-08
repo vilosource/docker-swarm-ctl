@@ -16,7 +16,7 @@ class ConfigSpec(BaseModel):
     templating: Optional[Dict] = Field(None, alias="Templating")
     
     class Config:
-        allow_population_by_field_name = True
+        populate_by_name = True
 
 
 class ConfigCreate(BaseModel):
@@ -54,7 +54,7 @@ class Config(BaseModel):
     data: Optional[str] = Field(None)
     
     class Config:
-        allow_population_by_field_name = True
+        populate_by_name = True
     
     def __init__(self, **data):
         super().__init__(**data)
@@ -75,7 +75,7 @@ class ConfigReference(BaseModel):
     file_mode: Optional[int] = Field(None, alias="Mode", description="File mode")
     
     class Config:
-        allow_population_by_field_name = True
+        populate_by_name = True
 
 
 class ConfigListFilters(BaseModel):

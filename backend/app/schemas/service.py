@@ -15,7 +15,7 @@ class ServiceMode(BaseModel):
     global_job: Optional[Dict] = Field(None, alias="GlobalJob")
     
     class Config:
-        allow_population_by_field_name = True
+        populate_by_name = True
 
 
 class ServicePort(BaseModel):
@@ -27,7 +27,7 @@ class ServicePort(BaseModel):
     publish_mode: str = Field("ingress", alias="PublishMode", description="'ingress' or 'host'")
     
     class Config:
-        allow_population_by_field_name = True
+        populate_by_name = True
 
 
 class ServiceMount(BaseModel):
@@ -42,7 +42,7 @@ class ServiceMount(BaseModel):
     tmpfs_options: Optional[Dict] = Field(None, alias="TmpfsOptions")
     
     class Config:
-        allow_population_by_field_name = True
+        populate_by_name = True
 
 
 class ServicePlacement(BaseModel):
@@ -53,7 +53,7 @@ class ServicePlacement(BaseModel):
     platforms: Optional[List[Dict]] = Field(None, alias="Platforms")
     
     class Config:
-        allow_population_by_field_name = True
+        populate_by_name = True
 
 
 class ServiceResources(BaseModel):
@@ -62,7 +62,7 @@ class ServiceResources(BaseModel):
     reservations: Optional[Dict[str, Any]] = Field(None, alias="Reservations", description="Resource reservations")
     
     class Config:
-        allow_population_by_field_name = True
+        populate_by_name = True
 
 
 class ServiceRestartPolicy(BaseModel):
@@ -73,7 +73,7 @@ class ServiceRestartPolicy(BaseModel):
     window: Optional[int] = Field(None, alias="Window", description="Window for restart attempts (ns)")
     
     class Config:
-        allow_population_by_field_name = True
+        populate_by_name = True
 
 
 class ServiceUpdateConfig(BaseModel):
@@ -86,7 +86,7 @@ class ServiceUpdateConfig(BaseModel):
     order: str = Field("stop-first", alias="Order", description="'stop-first' or 'start-first'")
     
     class Config:
-        allow_population_by_field_name = True
+        populate_by_name = True
 
 
 class ServiceHealthCheck(BaseModel):
@@ -98,7 +98,7 @@ class ServiceHealthCheck(BaseModel):
     start_period: Optional[int] = Field(None, alias="StartPeriod", description="Grace period (ns)")
     
     class Config:
-        allow_population_by_field_name = True
+        populate_by_name = True
 
 
 class ServiceCreate(BaseModel):
@@ -209,7 +209,7 @@ class ServiceUpdateStatus(BaseModel):
     message: Optional[str] = Field(None, alias="Message")
     
     class Config:
-        allow_population_by_field_name = True
+        populate_by_name = True
 
 
 class ServiceEndpoint(BaseModel):
@@ -219,7 +219,7 @@ class ServiceEndpoint(BaseModel):
     virtual_ips: List[Dict[str, str]] = Field(default_factory=list, alias="VirtualIPs")
     
     class Config:
-        allow_population_by_field_name = True
+        populate_by_name = True
 
 
 class Service(BaseModel):
@@ -239,7 +239,7 @@ class Service(BaseModel):
     replicas: Optional[int] = Field(None)
     
     class Config:
-        allow_population_by_field_name = True
+        populate_by_name = True
     
     def __init__(self, **data):
         super().__init__(**data)

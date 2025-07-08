@@ -24,7 +24,7 @@ class NodeDescription(BaseModel):
     tls_info: Optional[Dict] = Field(None, alias="TLSInfo")
     
     class Config:
-        allow_population_by_field_name = True
+        populate_by_name = True
 
 
 class NodeStatus(BaseModel):
@@ -34,7 +34,7 @@ class NodeStatus(BaseModel):
     addr: Optional[str] = Field(None, alias="Addr", description="IP address of the node")
     
     class Config:
-        allow_population_by_field_name = True
+        populate_by_name = True
 
 
 class NodeManagerStatus(BaseModel):
@@ -44,7 +44,7 @@ class NodeManagerStatus(BaseModel):
     addr: str = Field(..., alias="Addr", description="Manager address")
     
     class Config:
-        allow_population_by_field_name = True
+        populate_by_name = True
 
 
 class Node(BaseModel):
@@ -67,7 +67,7 @@ class Node(BaseModel):
     engine_version: str = Field(None)
     
     class Config:
-        allow_population_by_field_name = True
+        populate_by_name = True
     
     def __init__(self, **data):
         super().__init__(**data)

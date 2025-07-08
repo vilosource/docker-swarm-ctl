@@ -3,6 +3,7 @@ Swarm service management endpoints
 """
 
 from typing import List, Optional, Dict, Any
+from datetime import datetime
 from fastapi import APIRouter, Depends, Query, Request, Response, HTTPException, WebSocket
 from sqlalchemy.ext.asyncio import AsyncSession
 import json
@@ -21,7 +22,10 @@ from app.models.user import User
 from app.api.decorators import audit_operation
 from app.api.decorators_enhanced import handle_api_errors
 from app.core.logging import logger
-from app.api.v1.websocket.base import websocket_handler
+from app.api.v1.websocket.base import ConnectionManager
+from app.api.v1.websocket.containers import authenticate_websocket_user
+from app.api.v1.websocket.auth import check_permission
+from app.db.session import get_db as get_db_session
 
 
 router = APIRouter()
@@ -426,23 +430,57 @@ async def service_logs_ws(
     host_id: str = Query(..., description="Docker host ID"),
     tail: int = Query(100, description="Number of lines to show from the end"),
     follow: bool = Query(True, description="Follow log output"),
-    timestamps: bool = Query(False, description="Add timestamps")
+    timestamps: bool = Query(False, description="Add timestamps"),
+    token: Optional[str] = Query(None),
+    db: AsyncSession = Depends(get_db_session)
 ):
     """Stream service logs via WebSocket"""
-    async def log_generator(docker_service: IDockerService):
-        async for log_chunk in docker_service.service_logs(
+    # Authenticate user
+    user, error = await authenticate_websocket_user(token, db)
+    if not user:
+        await websocket.accept()
+        await websocket.close(code=1008, reason=error)
+        return
+    
+    # Check permissions
+    if not check_permission(user, "viewer"):
+        await websocket.accept()
+        await websocket.close(code=1008, reason="Insufficient permissions")
+        return
+    
+    # Initialize connection manager
+    manager = ConnectionManager()
+    
+    try:
+        # Get Docker service
+        docker_service = DockerServiceFactory.create(user, db, multi_host=True)
+        
+        # Accept connection
+        await websocket.accept()
+        
+        # Stream logs
+        async for log_chunk in await docker_service.service_logs(
             service_id=service_id,
             tail=str(tail),
             follow=follow,
             timestamps=timestamps,
             host_id=host_id
         ):
-            yield {"type": "log", "data": log_chunk}
+            await websocket.send_json({
+                "type": "log",
+                "data": log_chunk,
+                "service_id": service_id,
+                "timestamp": datetime.utcnow().isoformat()
+            })
     
-    await websocket_handler(
-        websocket=websocket,
-        operation_name=f"service_logs_{service_id}",
-        generator_func=log_generator,
-        resource_type="service",
-        resource_id=service_id
-    )
+    except DockerOperationError as e:
+        await websocket.send_json({
+            "type": "error",
+            "message": str(e)
+        })
+        await websocket.close(code=1011)
+    except Exception as e:
+        logger.error(f"WebSocket error for service {service_id}: {e}")
+        await websocket.close(code=1011)
+    finally:
+        await manager.disconnect(websocket, service_id)

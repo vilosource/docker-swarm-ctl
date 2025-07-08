@@ -17,7 +17,7 @@ class SecretSpec(BaseModel):
     templating: Optional[Dict] = Field(None, alias="Templating")
     
     class Config:
-        allow_population_by_field_name = True
+        populate_by_name = True
 
 
 class SecretCreate(BaseModel):
@@ -55,7 +55,7 @@ class Secret(BaseModel):
     labels: Dict[str, str] = Field(None)
     
     class Config:
-        allow_population_by_field_name = True
+        populate_by_name = True
     
     def __init__(self, **data):
         super().__init__(**data)
@@ -75,7 +75,7 @@ class SecretReference(BaseModel):
     file_mode: Optional[int] = Field(None, alias="Mode", description="File mode")
     
     class Config:
-        allow_population_by_field_name = True
+        populate_by_name = True
 
 
 class SecretListFilters(BaseModel):

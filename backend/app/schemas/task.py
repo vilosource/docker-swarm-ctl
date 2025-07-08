@@ -2,7 +2,7 @@
 Swarm task schemas
 """
 
-from typing import Dict, Optional, Any
+from typing import Dict, Optional, Any, List
 from datetime import datetime
 from pydantic import BaseModel, Field
 
@@ -16,7 +16,7 @@ class TaskState(BaseModel):
     container_exit_code: Optional[int] = Field(None, alias="ContainerExit")
     
     class Config:
-        allow_population_by_field_name = True
+        populate_by_name = True
 
 
 class TaskStatus(BaseModel):
@@ -28,7 +28,7 @@ class TaskStatus(BaseModel):
     container_status: Optional[Dict] = Field(None, alias="ContainerStatus")
     
     class Config:
-        allow_population_by_field_name = True
+        populate_by_name = True
 
 
 class Task(BaseModel):
@@ -57,7 +57,7 @@ class Task(BaseModel):
     state: str = Field(None)
     
     class Config:
-        allow_population_by_field_name = True
+        populate_by_name = True
     
     def __init__(self, **data):
         super().__init__(**data)
