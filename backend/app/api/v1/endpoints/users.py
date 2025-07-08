@@ -17,6 +17,7 @@ router = APIRouter()
 
 @router.get("/", response_model=PaginatedResponse[UserResponse])
 async def list_users(
+    request: Request,
     skip: int = 0,
     limit: int = 100,
     current_user: User = Depends(require_role("admin")),
@@ -61,6 +62,7 @@ async def create_user(
 
 @router.get("/me", response_model=UserResponse)
 async def get_current_user_info(
+    request: Request,
     current_user: User = Depends(get_current_active_user)
 ):
     return current_user
@@ -68,6 +70,7 @@ async def get_current_user_info(
 
 @router.get("/{user_id}", response_model=UserResponse)
 async def get_user(
+    request: Request,
     user_id: UUID,
     current_user: User = Depends(require_role("admin")),
     db: AsyncSession = Depends(get_db)

@@ -10,6 +10,7 @@ import json
 from app.db.session import get_db
 from app.core.security import get_current_active_user, require_role
 from app.core.exceptions import ValidationError
+from app.core.rate_limit import rate_limit
 from app.schemas.network import (
     NetworkCreate, NetworkResponse, NetworkInspect, 
     NetworkConnect, NetworkDisconnect, NetworkPruneResponse
@@ -73,6 +74,7 @@ async def list_networks(
 
 
 @router.post("/", response_model=NetworkResponse)
+@rate_limit("30/hour")
 @handle_api_errors("create_network")
 @audit_operation("network.create", "network", lambda r: r.name)
 async def create_network(
@@ -113,6 +115,7 @@ async def get_network(
 
 
 @router.delete("/{network_id}")
+@rate_limit("30/hour")
 @handle_api_errors("remove_network")
 @audit_operation("network.delete", "network")
 @standard_response("Network removed successfully")
@@ -129,6 +132,7 @@ async def remove_network(
 
 
 @router.post("/{network_id}/connect")
+@rate_limit("60/minute")
 @handle_api_errors("connect_container")
 @audit_operation("network.connect", "network")
 @standard_response("Container connected to network")
@@ -152,6 +156,7 @@ async def connect_container(
 
 
 @router.post("/{network_id}/disconnect")
+@rate_limit("60/minute")
 @handle_api_errors("disconnect_container")
 @audit_operation("network.disconnect", "network")
 @standard_response("Container disconnected from network")
@@ -173,6 +178,7 @@ async def disconnect_container(
 
 
 @router.post("/prune")
+@rate_limit("5/hour")
 @handle_api_errors("prune_networks")
 @audit_operation("network.prune", "system")
 async def prune_networks(

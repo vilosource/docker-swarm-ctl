@@ -70,5 +70,5 @@ def rate_limit(limit: str):
 # Common rate limits
 auth_limit = limiter.limit(settings.rate_limit_auth)
 default_limit = limiter.limit(settings.rate_limit_default)
-strict_limit = limiter.limit("10/minute")
-relaxed_limit = limiter.limit("1000/hour")
+strict_limit = limiter.limit(settings.rate_limit_strict)
+relaxed_limit = limiter.limit(settings.rate_limit_relaxed)

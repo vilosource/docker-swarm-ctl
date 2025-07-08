@@ -18,6 +18,49 @@ All API requests (except auth endpoints) require a JWT token in the Authorizatio
 Authorization: Bearer <token>
 ```
 
+## Rate Limiting
+
+All API endpoints are rate limited to prevent abuse. Rate limits are applied per user (when authenticated) or per IP address (for anonymous requests).
+
+### Rate Limit Headers
+
+Every API response includes rate limit information in the headers:
+
+```
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 99
+X-RateLimit-Reset: 1620000000
+```
+
+### Default Rate Limits
+
+- **Global default**: 100 requests/minute
+- **Authentication endpoints** (`/auth/*`): 5 requests/minute
+- **Image operations** (pull, delete): 10 requests/hour
+- **System operations** (prune): 5 requests/hour
+- **Container operations** (start/stop/restart): 60 requests/minute
+- **Container logs**: 200 requests/minute
+- **Container stats**: 100 requests/minute
+
+### Rate Limit Exceeded Response
+
+When rate limit is exceeded, the API returns a 429 status code:
+
+```json
+{
+  "error": {
+    "code": "RATE_LIMIT_EXCEEDED",
+    "message": "Rate limit exceeded: 5 per 1 minute",
+    "details": {
+      "limit": 5,
+      "remaining": 0,
+      "reset": 1620000000
+    }
+  },
+  "status": "error"
+}
+```
+
 ## Common Response Formats
 
 ### Success Response

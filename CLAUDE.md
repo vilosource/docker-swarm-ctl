@@ -91,6 +91,10 @@ docker-compose exec backend pytest --cov=app  # With coverage
 # Frontend tests
 docker-compose exec frontend npm test
 docker-compose exec frontend npm run test:coverage
+
+# Test rate limiting (requires Redis to be flushed between test runs)
+docker-compose exec redis redis-cli FLUSHDB
+docker-compose exec backend pytest tests/integration/test_auth_api.py::TestAuthAPI::test_rate_limiting -v
 ```
 
 ### Development URLs
@@ -141,7 +145,12 @@ All settings via environment variables or `.env` file:
 - `DATABASE_URL`: PostgreSQL connection
 - `REDIS_URL`: Redis connection
 - `DOCKER_HOST`: Docker daemon socket/TCP address
-- `RATE_LIMIT_*`: Rate limiting configuration
+- Rate limiting configuration:
+  - `RATE_LIMIT_ENABLED`: Enable/disable rate limiting (default: true)
+  - `RATE_LIMIT_DEFAULT`: Default limit for all endpoints (default: 100/minute)
+  - `RATE_LIMIT_AUTH`: Auth endpoint limit (default: 5/minute)
+  - `RATE_LIMIT_STRICT`: Strict limit for write operations (default: 10/minute)
+  - `RATE_LIMIT_RELAXED`: Relaxed limit for read operations (default: 1000/hour)
 
 ## Security Considerations
 - Rate limiting on all endpoints (stricter on auth endpoints)

@@ -44,8 +44,13 @@ class Settings(BaseSettings):
     
     # Rate Limiting
     rate_limit_enabled: bool = Field(True, env="RATE_LIMIT_ENABLED")
-    rate_limit_default: str = "100/minute"
-    rate_limit_auth: str = "5/minute"
+    rate_limit_default: str = Field("100/minute", env="RATE_LIMIT_DEFAULT")
+    rate_limit_auth: str = Field("5/minute", env="RATE_LIMIT_AUTH")
+    rate_limit_strict: str = Field("10/minute", env="RATE_LIMIT_STRICT")
+    rate_limit_relaxed: str = Field("1000/hour", env="RATE_LIMIT_RELAXED")
+    rate_limit_container_ops: str = Field("60/minute", env="RATE_LIMIT_CONTAINER_OPS")
+    rate_limit_image_ops: str = Field("10/hour", env="RATE_LIMIT_IMAGE_OPS")
+    rate_limit_system_ops: str = Field("5/hour", env="RATE_LIMIT_SYSTEM_OPS")
     
     # Celery
     celery_broker_url: str = Field(None, env="CELERY_BROKER_URL")

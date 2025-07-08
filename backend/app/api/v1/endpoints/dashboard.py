@@ -3,7 +3,7 @@ Dashboard endpoints for multi-host aggregated views
 """
 
 from typing import List, Optional
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 import asyncio
@@ -13,6 +13,7 @@ from datetime import datetime
 from app.db.session import get_db
 from app.core.security import get_current_active_user
 from app.core.logging import logger
+from app.core.rate_limit import rate_limit
 from app.models.user import User
 from app.models.docker_host import DockerHost
 from app.models import HostStatus
@@ -140,8 +141,10 @@ async def get_dashboard(
 
 
 @router.get("/refresh/{host_id}")
+@rate_limit("60/minute")
 @handle_api_errors("refresh_host_stats")
 async def refresh_host_stats(
+    request: Request,
     host_id: str,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)

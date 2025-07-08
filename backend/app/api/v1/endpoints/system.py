@@ -4,6 +4,7 @@ from typing import Dict, Optional
 
 from app.db.session import get_db
 from app.core.security import get_current_active_user, require_role, require_admin
+from app.core.rate_limit import rate_limit
 from app.services.docker_client import get_docker_client
 from app.services.docker_service import IDockerService, DockerServiceFactory
 from app.services.audit import AuditService
@@ -39,7 +40,9 @@ async def get_circuit_breakers(
 
 
 @router.post("/circuit-breakers/{breaker_name}/reset")
+@rate_limit("10/minute")
 async def reset_circuit_breaker(
+    request: Request,
     breaker_name: str,
     current_user: User = Depends(require_admin)
 ):
@@ -132,6 +135,7 @@ async def get_version(
 
 
 @router.post("/prune")
+@rate_limit("5/hour")
 async def system_prune(
     request: Request,
     volumes: bool = False,
@@ -170,7 +174,9 @@ async def system_prune(
 
 
 @router.get("/df")
+@rate_limit("60/minute")
 async def disk_usage(
+    request: Request,
     host_id: Optional[str] = Query(None, description="Docker host ID (defaults to local/default host)"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)

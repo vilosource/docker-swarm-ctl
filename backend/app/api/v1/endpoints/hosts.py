@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
 from app.core.security import get_current_active_user, require_role
+from app.core.rate_limit import rate_limit
 from app.schemas.docker_host import (
     DockerHostResponse as HostResponse, 
     DockerHostCreate as HostCreate, 
@@ -136,6 +137,7 @@ async def delete_host(
 
 
 @router.post("/{host_id}/test", response_model=HostConnectionTest)
+@rate_limit("20/minute")
 @handle_api_errors("test_host_connection")
 @audit_operation("host.test_connection", "docker_host")
 async def test_host_connection(

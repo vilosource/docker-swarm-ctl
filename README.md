@@ -16,6 +16,7 @@ A web-based platform for managing Docker environments with a React frontend and 
   - Real-time container stats monitoring with charts
   - WebSocket support for all real-time updates
 - **Audit Logging**: Track all user actions for security and compliance
+- **Rate Limiting**: Configurable rate limits on all API endpoints with Redis backend
 
 See [WorkLog.md](WorkLog.md) for detailed implementation progress and [PLAN.md](PLAN.md) for the project roadmap.
 
@@ -128,13 +129,17 @@ Once running, access the interactive API documentation at:
 
 ## Security Features
 
-- JWT tokens with short expiration times
-- Role-based access control (RBAC)
-- Rate limiting on all endpoints
-- Input validation and sanitization
-- Audit logging for all actions
-- Security headers (CORS, XSS protection, etc.)
-- Docker socket mounted read-only
+- **JWT Authentication**: Short-lived access tokens (30 min) with refresh tokens (7 days)
+- **Role-based Access Control (RBAC)**: Three roles - Admin, Operator, Viewer
+- **Rate Limiting**: 
+  - Global default: 100 requests/minute
+  - Authentication endpoints: 5 requests/minute
+  - Configurable per-endpoint limits
+  - Redis-backed for distributed systems
+- **Input Validation**: Pydantic schemas for all API inputs
+- **Audit Logging**: Complete audit trail of all state-changing operations
+- **Security Headers**: CORS, XSS protection, CSRF protection
+- **Docker Socket Security**: Mounted read-only to prevent container escapes
 
 ## User Roles
 
@@ -153,6 +158,32 @@ Once running, access the interactive API documentation at:
 - View containers and images
 - View system information
 - Read-only access
+
+## Configuration
+
+### Environment Variables
+
+Key configuration options (see `.env.example` for full list):
+
+```bash
+# Rate Limiting
+RATE_LIMIT_ENABLED=true
+RATE_LIMIT_DEFAULT=100/minute
+RATE_LIMIT_AUTH=5/minute
+RATE_LIMIT_STRICT=10/minute
+RATE_LIMIT_RELAXED=1000/hour
+
+# JWT Settings
+SECRET_KEY=your-secret-key
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+REFRESH_TOKEN_EXPIRE_DAYS=7
+
+# Database
+DATABASE_URL=postgresql://user:pass@postgres/dbname
+
+# Redis
+REDIS_URL=redis://redis:6379/0
+```
 
 ## Architecture
 

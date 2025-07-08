@@ -10,6 +10,7 @@ import json
 from app.db.session import get_db
 from app.core.security import get_current_active_user, require_role
 from app.core.exceptions import ValidationError
+from app.core.rate_limit import rate_limit
 from app.schemas.volume import (
     VolumeCreate, VolumeResponse, VolumeInspect, VolumePruneResponse
 )
@@ -67,6 +68,7 @@ async def list_volumes(
 
 
 @router.post("/", response_model=VolumeResponse)
+@rate_limit("30/hour")
 @handle_api_errors("create_volume")
 @audit_operation("volume.create", "volume", lambda r: r.name)
 async def create_volume(
@@ -103,6 +105,7 @@ async def get_volume(
 
 
 @router.delete("/{volume_name}")
+@rate_limit("50/hour")
 @handle_api_errors("remove_volume")
 @audit_operation("volume.delete", "volume")
 @standard_response("Volume removed successfully")
@@ -120,6 +123,7 @@ async def remove_volume(
 
 
 @router.post("/prune")
+@rate_limit("5/hour")
 @handle_api_errors("prune_volumes")
 @audit_operation("volume.prune", "system")
 async def prune_volumes(

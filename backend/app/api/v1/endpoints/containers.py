@@ -14,7 +14,7 @@ import json
 from app.db.session import get_db
 from app.core.security import get_current_active_user, require_role
 from app.core.exceptions import ValidationError
-from app.core.rate_limit import rate_limit, strict_limit
+from app.core.rate_limit import rate_limit
 from app.schemas.container import (
     ContainerCreate, ContainerResponse, ContainerStats, ContainerInspect
 )
@@ -148,6 +148,7 @@ async def inspect_container(
 
 
 @router.post("/{container_id}/start")
+@rate_limit("60/minute")
 @handle_api_errors("start_container")
 @audit_operation("container.start", "container")
 @standard_response("Container {container_id} started")
@@ -167,6 +168,7 @@ async def start_container(
 
 
 @router.post("/{container_id}/stop")
+@rate_limit("60/minute")
 @handle_api_errors("stop_container")
 @audit_operation("container.stop", "container")
 @standard_response("Container {container_id} stopped")
@@ -188,6 +190,7 @@ async def stop_container(
 
 
 @router.post("/{container_id}/restart")
+@rate_limit("60/minute")
 @handle_api_errors("restart_container")
 @audit_operation("container.restart", "container")
 @standard_response("Container {container_id} restarted")
@@ -233,8 +236,10 @@ async def remove_container(
 
 
 @router.get("/{container_id}/logs")
+@rate_limit("200/minute")
 @handle_api_errors("get_container_logs")
 async def get_container_logs(
+    request: Request,
     container_id: str,
     lines: int = Query(100, description="Number of lines to return"),
     timestamps: bool = Query(False, description="Add timestamps to logs"),
@@ -257,8 +262,10 @@ async def get_container_logs(
 
 
 @router.get("/{container_id}/stats", response_model=ContainerStats)
+@rate_limit("100/minute")
 @handle_api_errors("get_container_stats")
 async def get_container_stats(
+    request: Request,
     container_id: str,
     host_id: Optional[str] = Query(None, description="Docker host ID"),
     docker_service: IDockerService = Depends(get_docker_service)
