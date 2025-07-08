@@ -3,7 +3,7 @@ Network management endpoints
 """
 
 from typing import List, Optional
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Query, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 import json
 
@@ -79,6 +79,7 @@ async def list_networks(
 @audit_operation("network.create", "network", lambda r: r.name)
 async def create_network(
     request: Request,
+    response: Response,
     network: NetworkCreate,
     host_id: Optional[str] = Query(None, description="Docker host ID"),
     current_user: User = Depends(require_role("operator")),
@@ -121,6 +122,7 @@ async def get_network(
 @standard_response("Network removed successfully")
 async def remove_network(
     request: Request,
+    response: Response,
     network_id: str,
     host_id: Optional[str] = Query(None, description="Docker host ID"),
     current_user: User = Depends(require_role("operator")),
@@ -138,6 +140,7 @@ async def remove_network(
 @standard_response("Container connected to network")
 async def connect_container(
     request: Request,
+    response: Response,
     network_id: str,
     connection: NetworkConnect,
     host_id: Optional[str] = Query(None, description="Docker host ID"),
@@ -162,6 +165,7 @@ async def connect_container(
 @standard_response("Container disconnected from network")
 async def disconnect_container(
     request: Request,
+    response: Response,
     network_id: str,
     disconnection: NetworkDisconnect,
     host_id: Optional[str] = Query(None, description="Docker host ID"),
@@ -183,6 +187,7 @@ async def disconnect_container(
 @audit_operation("network.prune", "system")
 async def prune_networks(
     request: Request,
+    response: Response,
     filters: Optional[str] = Query(None, description="JSON encoded filters"),
     host_id: Optional[str] = Query(None, description="Docker host ID"),
     current_user: User = Depends(require_role("admin")),

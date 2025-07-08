@@ -8,7 +8,9 @@ import Containers from '@/pages/Containers'
 import ContainerDetails from '@/pages/ContainerDetails'
 import Images from '@/pages/Images'
 import Volumes from '@/pages/Volumes'
+import VolumeCreate from '@/pages/VolumeCreate'
 import Networks from '@/pages/Networks'
+import NetworkCreate from '@/pages/NetworkCreate'
 import Users from '@/pages/Users'
 import Hosts from '@/pages/Hosts'
 import Profile from '@/pages/Profile'
@@ -36,7 +38,9 @@ function App() {
           <Route path="/hosts/:hostId/containers/:id" element={<ContainerDetails />} />
           <Route path="/images" element={<Images />} />
           <Route path="/volumes" element={<Volumes />} />
+          <Route path="/volumes/create" element={<VolumeCreate />} />
           <Route path="/networks" element={<Networks />} />
+          <Route path="/networks/create" element={<NetworkCreate />} />
           <Route path="/events" element={<Events />} />
           <Route path="/users" element={<Users />} />
           <Route path="/hosts" element={<Hosts />} />

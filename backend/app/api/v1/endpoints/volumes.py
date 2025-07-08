@@ -3,7 +3,7 @@ Volume management endpoints
 """
 
 from typing import List, Optional
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Query, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 import json
 
@@ -73,6 +73,7 @@ async def list_volumes(
 @audit_operation("volume.create", "volume", lambda r: r.name)
 async def create_volume(
     request: Request,
+    response: Response,
     volume: VolumeCreate,
     host_id: Optional[str] = Query(None, description="Docker host ID"),
     current_user: User = Depends(require_role("operator")),
@@ -111,6 +112,7 @@ async def get_volume(
 @standard_response("Volume removed successfully")
 async def remove_volume(
     request: Request,
+    response: Response,
     volume_name: str,
     force: bool = Query(False, description="Force removal"),
     host_id: Optional[str] = Query(None, description="Docker host ID"),
@@ -128,6 +130,7 @@ async def remove_volume(
 @audit_operation("volume.prune", "system")
 async def prune_volumes(
     request: Request,
+    response: Response,
     filters: Optional[str] = Query(None, description="JSON encoded filters"),
     host_id: Optional[str] = Query(None, description="Docker host ID"),
     current_user: User = Depends(require_role("admin")),
