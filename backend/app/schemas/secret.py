@@ -45,10 +45,10 @@ class SecretCreate(BaseModel):
 class Secret(BaseModel):
     """Swarm secret information"""
     id: str = Field(..., alias="ID")
-    version: Dict[str, int] = Field(..., alias="Version")
-    created_at: datetime = Field(..., alias="CreatedAt")
-    updated_at: datetime = Field(..., alias="UpdatedAt")
-    spec: SecretSpec = Field(..., alias="Spec")
+    version: Optional[Dict[str, int]] = Field(None, alias="Version")
+    created_at: Optional[datetime] = Field(None, alias="CreatedAt")
+    updated_at: Optional[datetime] = Field(None, alias="UpdatedAt")
+    spec: Optional[SecretSpec] = Field(None, alias="Spec")
     
     # Computed fields
     name: str = Field(None)

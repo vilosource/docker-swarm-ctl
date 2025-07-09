@@ -43,10 +43,10 @@ class ConfigCreate(BaseModel):
 class Config(BaseModel):
     """Swarm config information"""
     id: str = Field(..., alias="ID")
-    version: Dict[str, int] = Field(..., alias="Version")
-    created_at: datetime = Field(..., alias="CreatedAt")
-    updated_at: datetime = Field(..., alias="UpdatedAt")
-    spec: ConfigSpec = Field(..., alias="Spec")
+    version: Optional[Dict[str, int]] = Field(None, alias="Version")
+    created_at: Optional[datetime] = Field(None, alias="CreatedAt")
+    updated_at: Optional[datetime] = Field(None, alias="UpdatedAt")
+    spec: Optional[ConfigSpec] = Field(None, alias="Spec")
     
     # Computed fields
     name: str = Field(None)
