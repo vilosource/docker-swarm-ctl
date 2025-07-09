@@ -2,17 +2,20 @@
 Swarm node schemas
 """
 
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, Any
 from datetime import datetime
 from pydantic import BaseModel, Field
 
 
 class NodeSpec(BaseModel):
     """Node specification"""
-    name: Optional[str] = None
-    labels: Dict[str, str] = Field(default_factory=dict)
-    role: str = Field(..., description="Node role: 'worker' or 'manager'")
-    availability: str = Field(..., description="Node availability: 'active', 'pause', or 'drain'")
+    name: Optional[str] = Field(None, alias="Name")
+    labels: Dict[str, str] = Field(default_factory=dict, alias="Labels")
+    role: str = Field(..., alias="Role", description="Node role: 'worker' or 'manager'")
+    availability: str = Field(..., alias="Availability", description="Node availability: 'active', 'pause', or 'drain'")
+    
+    class Config:
+        populate_by_name = True
 
 
 class NodeDescription(BaseModel):
@@ -20,7 +23,7 @@ class NodeDescription(BaseModel):
     hostname: str = Field(..., alias="Hostname")
     platform: Dict[str, str] = Field(..., alias="Platform")
     resources: Dict[str, int] = Field(..., alias="Resources", description="CPU and memory resources")
-    engine: Dict[str, str] = Field(..., alias="Engine", description="Docker engine info")
+    engine: Dict[str, Any] = Field(..., alias="Engine", description="Docker engine info")
     tls_info: Optional[Dict] = Field(None, alias="TLSInfo")
     
     class Config:
