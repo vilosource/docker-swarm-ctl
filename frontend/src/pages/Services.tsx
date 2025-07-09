@@ -199,7 +199,18 @@ export default function Services() {
                       {services.map((service) => (
                         <tr key={service.ID}>
                           <td>
-                            <strong>{service.name}</strong>
+                            <strong>
+                              <a
+                                href="#"
+                                onClick={(e) => {
+                                  e.preventDefault()
+                                  navigate(`/hosts/${hostId}/services/${service.ID}`)
+                                }}
+                                className="text-decoration-none"
+                              >
+                                {service.name}
+                              </a>
+                            </strong>
                           </td>
                           <td>
                             <code className="text-muted">{service.image}</code>
@@ -217,6 +228,13 @@ export default function Services() {
                           </td>
                           <td>
                             <div className="btn-group btn-group-sm">
+                              <button
+                                className="btn btn-primary"
+                                onClick={() => navigate(`/hosts/${hostId}/services/${service.ID}`)}
+                                title="View Details"
+                              >
+                                <i className="mdi mdi-eye"></i>
+                              </button>
                               {service.mode === 'replicated' && (
                                 <button
                                   className="btn btn-light"
@@ -226,27 +244,6 @@ export default function Services() {
                                   <i className="mdi mdi-scale-balance"></i>
                                 </button>
                               )}
-                              <button
-                                className="btn btn-light"
-                                onClick={() => navigate(`/hosts/${hostId}/services/${service.ID}/logs`)}
-                                title="View Logs"
-                              >
-                                <i className="mdi mdi-file-document-outline"></i>
-                              </button>
-                              <button
-                                className="btn btn-light"
-                                onClick={() => navigate(`/hosts/${hostId}/services/${service.ID}/tasks`)}
-                                title="View Tasks"
-                              >
-                                <i className="mdi mdi-format-list-bulleted"></i>
-                              </button>
-                              <button
-                                className="btn btn-light"
-                                onClick={() => navigate(`/hosts/${hostId}/services/${service.ID}/edit`)}
-                                title="Edit Service"
-                              >
-                                <i className="mdi mdi-pencil"></i>
-                              </button>
                               <button
                                 className="btn btn-light text-danger"
                                 onClick={() => handleRemoveClick(service)}

@@ -156,23 +156,49 @@ async def get_swarm_cluster(
     
     # Get detailed swarm info from leader
     try:
-        swarm_info = await docker_service.get_swarm_info(str(leader_host.id))
-        services = await docker_service.list_services(str(leader_host.id))
-        nodes = await docker_service.list_nodes(str(leader_host.id))
+        # Basic info we can get from database
+        manager_count = sum(1 for h in hosts if h.host_type == HostType.swarm_manager)
+        worker_count = sum(1 for h in hosts if h.host_type == HostType.swarm_worker)
         
-        # Count node states
-        ready_nodes = sum(1 for n in nodes if n.get("Status", {}).get("State") == "ready")
+        # Try to get additional info from Docker API
+        swarm_created_at = None
+        swarm_updated_at = None
+        service_count = 0
+        ready_nodes = len(hosts)  # Default to all nodes ready
+        swarm_spec = {}
+        join_tokens = {}
+        
+        try:
+            swarm_info = await docker_service.get_swarm_info(str(leader_host.id))
+            swarm_created_at = swarm_info.get("CreatedAt")
+            swarm_updated_at = swarm_info.get("UpdatedAt")
+            swarm_spec = swarm_info.get("Spec", {})
+            join_tokens = swarm_info.get("JoinTokens", {})
+        except Exception as e:
+            logger.warning(f"Could not get swarm info: {e}")
+        
+        try:
+            services = await docker_service.list_services(str(leader_host.id))
+            service_count = len(services)
+        except Exception as e:
+            logger.warning(f"Could not get services: {e}")
+        
+        try:
+            nodes = await docker_service.list_nodes(str(leader_host.id))
+            ready_nodes = sum(1 for n in nodes if n.get("state") == "ready")
+        except Exception as e:
+            logger.warning(f"Could not get nodes: {e}")
         
         return SwarmClusterInfo(
             swarm_id=swarm_id,
             cluster_name=hosts[0].cluster_name or f"Swarm {swarm_id[:8]}",
-            created_at=swarm_info.get("CreatedAt"),
-            updated_at=swarm_info.get("UpdatedAt"),
-            manager_count=sum(1 for h in hosts if h.host_type == HostType.swarm_manager),
-            worker_count=sum(1 for h in hosts if h.host_type == HostType.swarm_worker),
+            created_at=swarm_created_at,
+            updated_at=swarm_updated_at,
+            manager_count=manager_count,
+            worker_count=worker_count,
             total_nodes=len(hosts),
             ready_nodes=ready_nodes,
-            service_count=len(services),
+            service_count=service_count,
             leader_host={
                 "id": str(leader_host.id),
                 "display_name": leader_host.display_name or leader_host.name,
@@ -182,13 +208,14 @@ async def get_swarm_cluster(
                 {
                     "id": str(h.id),
                     "display_name": h.display_name or h.name,
-                    "host_type": h.host_type,
-                    "is_leader": h.is_leader
+                    "host_type": h.host_type.value if hasattr(h.host_type, 'value') else str(h.host_type) if h.host_type else None,
+                    "is_leader": h.is_leader,
+                    "url": h.host_url
                 }
                 for h in hosts
             ],
-            swarm_spec=swarm_info.get("Spec", {}),
-            join_tokens=swarm_info.get("JoinTokens", {})
+            swarm_spec=swarm_spec,
+            join_tokens=join_tokens
         )
         
     except Exception as e:

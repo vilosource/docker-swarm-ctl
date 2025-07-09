@@ -221,7 +221,12 @@ export default function Nodes() {
                             <code className="text-muted">{node.addr}</code>
                           </td>
                           <td>
-                            <small>{formatDistanceToNow(new Date(node.updated_at), { addSuffix: true })}</small>
+                            <small>
+                              {node.updated_at 
+                                ? formatDistanceToNow(new Date(node.updated_at), { addSuffix: true })
+                                : 'Unknown'
+                              }
+                            </small>
                           </td>
                           <td>
                             <div className="btn-group btn-group-sm">

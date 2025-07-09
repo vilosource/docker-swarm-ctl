@@ -132,6 +132,7 @@ export default function SwarmClustersOverview() {
                     className="card cursor-pointer" 
                     onClick={() => navigate(`/swarms/${swarm.swarm_id}`)}
                     style={{ cursor: 'pointer' }}
+                    title="Click to view nodes, services, and configurations for this swarm"
                   >
                     <div className="card-body">
                       <div className="d-flex justify-content-between align-items-start mb-3">
