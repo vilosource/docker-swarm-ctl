@@ -19,7 +19,10 @@ export default function SwarmOverview() {
   const swarmInit = useSwarmInit()
   const swarmLeave = useSwarmLeave()
   
-  const isNotInSwarm = swarmError && 'response' in swarmError && swarmError.response?.status === 400
+  const isNotInSwarm = swarmError && 'response' in swarmError && (swarmError.response?.status === 400 || swarmError.response?.status === 404)
+  const isNotManager = swarmError && 'response' in swarmError && swarmError.response?.status === 400 && 
+    swarmError.response?.data?.detail?.includes('not a swarm manager')
+  const errorMessage = swarmError && 'response' in swarmError && swarmError.response?.data?.detail
   
   const handleInitSwarm = async () => {
     if (!hostId || !advertiseAddr) return
@@ -67,6 +70,33 @@ export default function SwarmOverview() {
     )
   }
   
+  // Handle other types of errors (network issues, server errors)
+  if (swarmError && !isNotInSwarm) {
+    return (
+      <div className="row">
+        <div className="col-12">
+          <div className="card">
+            <div className="card-body">
+              <div className="alert alert-danger">
+                <h5 className="alert-heading">Error Loading Swarm Information</h5>
+                <p className="mb-0">
+                  {errorMessage || 'Failed to retrieve swarm information. Please check if the Docker host is accessible.'}
+                </p>
+              </div>
+              <button
+                className="btn btn-secondary"
+                onClick={() => window.location.reload()}
+              >
+                <i className="mdi mdi-refresh me-1"></i>
+                Retry
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+  
   const nodes = nodesData?.nodes || []
   const services = servicesData?.services || []
   const managerNodes = nodes.filter(n => n.role === 'manager')
@@ -104,25 +134,40 @@ export default function SwarmOverview() {
           <div className="col-12">
             <div className="card">
               <div className="card-body">
-                <div className="alert alert-info">
-                  <h5 className="alert-heading">Not Part of a Swarm</h5>
-                  <p className="mb-0">This Docker host is not currently part of a swarm cluster.</p>
+                <div className={`alert ${isNotManager ? 'alert-warning' : 'alert-info'}`}>
+                  <h5 className="alert-heading">
+                    {isNotManager ? 'Not a Swarm Manager' : 'Not Part of a Swarm'}
+                  </h5>
+                  <p className="mb-0">
+                    {isNotManager 
+                      ? 'This Docker host is part of a swarm but is not a manager node. Only manager nodes can view swarm information.'
+                      : errorMessage || 'This Docker host is not currently part of a swarm cluster.'}
+                  </p>
                 </div>
-                <div className="d-flex gap-2">
-                  <button
-                    className="btn btn-primary"
-                    onClick={() => setShowInitModal(true)}
-                  >
-                    <i className="mdi mdi-plus me-1"></i>
-                    Initialize New Swarm
-                  </button>
-                  <button
-                    className="btn btn-outline-primary"
-                    onClick={() => navigate(`/hosts/${hostId}/join-swarm`)}
-                  >
-                    Join Existing Swarm
-                  </button>
-                </div>
+                {!isNotManager && (
+                  <div className="d-flex gap-2">
+                    <button
+                      className="btn btn-primary"
+                      onClick={() => setShowInitModal(true)}
+                    >
+                      <i className="mdi mdi-plus me-1"></i>
+                      Initialize New Swarm
+                    </button>
+                    <button
+                      className="btn btn-outline-primary"
+                      onClick={() => navigate(`/hosts/${hostId}/join-swarm`)}
+                    >
+                      Join Existing Swarm
+                    </button>
+                  </div>
+                )}
+                {isNotManager && (
+                  <div className="mt-3">
+                    <p className="text-muted mb-0">
+                      To manage the swarm, please connect to a manager node or promote this node to manager status.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
