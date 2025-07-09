@@ -91,6 +91,23 @@ async def init_swarm(
     
     # Get updated swarm info
     swarm_attrs = await docker_service.get_swarm_info(host_id)
+    
+    # Update host with swarm information
+    from app.models.docker_host import DockerHost, HostType
+    from sqlalchemy import select
+    
+    stmt = select(DockerHost).where(DockerHost.id == host_id)
+    result = await db.execute(stmt)
+    host = result.scalar_one_or_none()
+    
+    if host:
+        host.swarm_id = swarm_attrs.get("ID")
+        host.cluster_name = swarm_init.cluster_name
+        host.host_type = HostType.swarm_manager
+        host.is_leader = True  # First node is always the leader
+        await db.commit()
+        logger.info(f"Updated host {host_id} with swarm info")
+    
     return SwarmInfo(**swarm_attrs)
 
 
@@ -119,6 +136,43 @@ async def join_swarm(
     
     logger.info(f"Host {host_id} joined swarm")
     
+    # Get swarm info to update host
+    try:
+        swarm_attrs = await docker_service.get_swarm_info(host_id)
+        node_info = await docker_service.get_node_info(host_id)
+        
+        # Update host with swarm information
+        from app.models.docker_host import DockerHost, HostType
+        from sqlalchemy import select
+        
+        stmt = select(DockerHost).where(DockerHost.id == host_id)
+        result = await db.execute(stmt)
+        host = result.scalar_one_or_none()
+        
+        if host:
+            host.swarm_id = swarm_attrs.get("ID")
+            # Determine if this is a manager or worker based on the join token
+            # In a real implementation, we'd need to check the actual node role
+            host.host_type = HostType.swarm_worker  # Default to worker, update if manager
+            if node_info and node_info.get("Role") == "manager":
+                host.host_type = HostType.swarm_manager
+            host.is_leader = False
+            
+            # Try to get cluster name from other hosts in the same swarm
+            cluster_stmt = select(DockerHost).where(
+                DockerHost.swarm_id == host.swarm_id,
+                DockerHost.cluster_name != None
+            ).limit(1)
+            cluster_result = await db.execute(cluster_stmt)
+            cluster_host = cluster_result.scalar_one_or_none()
+            if cluster_host:
+                host.cluster_name = cluster_host.cluster_name
+            
+            await db.commit()
+            logger.info(f"Updated host {host_id} with swarm info")
+    except Exception as e:
+        logger.warning(f"Failed to update host swarm info: {e}")
+    
     return {"message": "Successfully joined swarm"}
 
 
@@ -142,6 +196,22 @@ async def leave_swarm(
     )
     
     logger.info(f"Host {host_id} left swarm")
+    
+    # Update host to remove swarm information
+    from app.models.docker_host import DockerHost, HostType
+    from sqlalchemy import select
+    
+    stmt = select(DockerHost).where(DockerHost.id == host_id)
+    result = await db.execute(stmt)
+    host = result.scalar_one_or_none()
+    
+    if host:
+        host.swarm_id = None
+        host.cluster_name = None
+        host.host_type = HostType.standalone
+        host.is_leader = False
+        await db.commit()
+        logger.info(f"Cleared swarm info from host {host_id}")
     
     return {"message": "Successfully left swarm"}
 

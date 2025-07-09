@@ -303,14 +303,14 @@ export default function Layout() {
                   <span>Swarm</span>
                 </a>
                 <ul className={`nav-second-level ${expandedSections.includes('swarm') ? 'mm-show' : 'mm-collapse'}`}>
+                  <li className={location.pathname === '/swarms' ? 'menuitem-active' : ''}>
+                    <Link to="/swarms" className={location.pathname === '/swarms' ? 'active' : ''}>
+                      <i className="mdi mdi-view-dashboard-outline"></i>
+                      <span>Overview</span>
+                    </Link>
+                  </li>
                   {hosts.length > 0 && hosts[0]?.id && (
                     <>
-                      <li className={location.pathname.includes('/swarm') ? 'menuitem-active' : ''}>
-                        <Link to={`/hosts/${hosts[0].id}/swarm`} className={location.pathname.includes('/swarm') ? 'active' : ''}>
-                          <i className="mdi mdi-view-dashboard-outline"></i>
-                          <span>Overview</span>
-                        </Link>
-                      </li>
                       <li className={location.pathname.includes('/nodes') ? 'menuitem-active' : ''}>
                         <Link to={`/hosts/${hosts[0].id}/nodes`} className={location.pathname.includes('/nodes') ? 'active' : ''}>
                           <i className="mdi mdi-server-network"></i>

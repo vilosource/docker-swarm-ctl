@@ -23,6 +23,7 @@ import HostVolumes from '@/pages/HostVolumes'
 import HostNetworks from '@/pages/HostNetworks'
 import HostSystem from '@/pages/HostSystem'
 import SwarmOverview from '@/pages/SwarmOverview'
+import SwarmClustersOverview from '@/pages/SwarmClustersOverview'
 import Nodes from '@/pages/Nodes'
 import Services from '@/pages/Services'
 import SecretsConfigs from '@/pages/SecretsConfigs'
@@ -56,6 +57,7 @@ function App() {
           <Route path="/hosts/:hostId/volumes" element={<HostVolumes />} />
           <Route path="/hosts/:hostId/networks" element={<HostNetworks />} />
           <Route path="/hosts/:hostId/system" element={<HostSystem />} />
+          <Route path="/swarms" element={<SwarmClustersOverview />} />
           <Route path="/hosts/:hostId/swarm" element={<SwarmOverview />} />
           <Route path="/hosts/:hostId/nodes" element={<Nodes />} />
           <Route path="/hosts/:hostId/services" element={<Services />} />

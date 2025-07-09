@@ -2,7 +2,7 @@ from fastapi import APIRouter
 
 from app.api.v1.endpoints import (
     auth, users, containers, images, system, health, hosts, dashboard, volumes, networks,
-    swarm, nodes, services, secrets, configs
+    swarm, swarms, nodes, services, secrets, configs
 )
 
 api_router = APIRouter()
@@ -23,6 +23,7 @@ api_router.include_router(networks.router, prefix="/networks", tags=["networks"]
 
 # Swarm management
 api_router.include_router(swarm.router, prefix="/swarm", tags=["swarm"])
+api_router.include_router(swarms.router, prefix="/swarms", tags=["swarms"])
 api_router.include_router(nodes.router, prefix="/nodes", tags=["nodes"])
 api_router.include_router(services.router, prefix="/services", tags=["services"])
 api_router.include_router(secrets.router, prefix="/secrets", tags=["secrets"])
