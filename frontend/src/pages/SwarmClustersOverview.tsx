@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { formatDistanceToNow } from 'date-fns'
-import { apiClient } from '@/api/client'
+import { api } from '@/api/client'
 
 interface HostInfo {
   id: string
@@ -35,7 +35,7 @@ export default function SwarmClustersOverview() {
   const { data, isLoading, error, refetch } = useQuery<SwarmClustersResponse>({
     queryKey: ['swarms'],
     queryFn: async () => {
-      const response = await apiClient.get('/swarms/')
+      const response = await api.get('/swarms/')
       return response.data
     }
   })
