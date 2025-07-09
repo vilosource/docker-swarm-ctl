@@ -284,6 +284,61 @@ export default function Layout() {
                 </ul>
               </li>
               
+              {/* Swarm Section */}
+              <li className={location.pathname.includes('/swarm') || location.pathname.includes('/nodes') || location.pathname.includes('/services') || location.pathname.includes('/secrets-configs') ? 'menuitem-active' : ''}>
+                <a
+                  href="#"
+                  className={`has-arrow ${expandedSections.includes('swarm') ? '' : 'collapsed'}`}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    setExpandedSections(prev => 
+                      prev.includes('swarm') 
+                        ? prev.filter(s => s !== 'swarm')
+                        : [...prev, 'swarm']
+                    )
+                  }}
+                  aria-expanded={expandedSections.includes('swarm')}
+                >
+                  <i className="mdi mdi-cloud-braces"></i>
+                  <span>Swarm</span>
+                </a>
+                <ul className={`nav-second-level ${expandedSections.includes('swarm') ? 'mm-show' : 'mm-collapse'}`}>
+                  {hosts.length > 0 && hosts[0]?.id && (
+                    <>
+                      <li className={location.pathname.includes('/swarm') ? 'menuitem-active' : ''}>
+                        <Link to={`/hosts/${hosts[0].id}/swarm`} className={location.pathname.includes('/swarm') ? 'active' : ''}>
+                          <i className="mdi mdi-view-dashboard-outline"></i>
+                          <span>Overview</span>
+                        </Link>
+                      </li>
+                      <li className={location.pathname.includes('/nodes') ? 'menuitem-active' : ''}>
+                        <Link to={`/hosts/${hosts[0].id}/nodes`} className={location.pathname.includes('/nodes') ? 'active' : ''}>
+                          <i className="mdi mdi-server-network"></i>
+                          <span>Nodes</span>
+                        </Link>
+                      </li>
+                      <li className={location.pathname.includes('/services') ? 'menuitem-active' : ''}>
+                        <Link to={`/hosts/${hosts[0].id}/services`} className={location.pathname.includes('/services') ? 'active' : ''}>
+                          <i className="mdi mdi-cogs"></i>
+                          <span>Services</span>
+                        </Link>
+                      </li>
+                      <li className={location.pathname.includes('/secrets-configs') ? 'menuitem-active' : ''}>
+                        <Link to={`/hosts/${hosts[0].id}/secrets-configs`} className={location.pathname.includes('/secrets-configs') ? 'active' : ''}>
+                          <i className="mdi mdi-key-variant"></i>
+                          <span>Secrets & Configs</span>
+                        </Link>
+                      </li>
+                    </>
+                  )}
+                  {(!hosts || hosts.length === 0) && (
+                    <li className="text-muted text-center py-2">
+                      <small>No hosts available</small>
+                    </li>
+                  )}
+                </ul>
+              </li>
+              
               {/* Individual Hosts */}
               {console.log('[Layout] Rendering hosts section, hosts.length:', hosts.length)}
               {/* Show loading state */}
