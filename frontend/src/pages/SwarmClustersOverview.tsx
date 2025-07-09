@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { formatDistanceToNow } from 'date-fns'
-import { apiClient } from '../api/client'
+import { apiClient } from '@/api/client'
 
 interface HostInfo {
   id: string
