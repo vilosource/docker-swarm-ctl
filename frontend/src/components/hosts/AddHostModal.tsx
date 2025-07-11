@@ -3,6 +3,7 @@ import { useMutation } from '@tanstack/react-query'
 import { hostsApi } from '@/api/hosts'
 import { DockerHostCreate, HostType, ConnectionType } from '@/types'
 import { useToast } from '@/hooks/useToast'
+import { SSHHostWizard } from '@/components/wizards'
 
 interface AddHostModalProps {
   show: boolean
@@ -12,6 +13,7 @@ interface AddHostModalProps {
 
 export default function AddHostModal({ show, onClose, onSuccess }: AddHostModalProps) {
   const { showToast } = useToast()
+  const [showSSHWizard, setShowSSHWizard] = useState(false)
   const [formData, setFormData] = useState<DockerHostCreate>({
     name: '',
     display_name: '',
@@ -44,6 +46,12 @@ export default function AddHostModal({ show, onClose, onSuccess }: AddHostModalP
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     
+    // Use SSH wizard for SSH connections
+    if (formData.connection_type === 'ssh') {
+      setShowSSHWizard(true)
+      return
+    }
+    
     const credentials = []
     if (showCredentials && formData.connection_type === 'tcp') {
       if (tlsCert) credentials.push({ credential_type: 'tls_cert', credential_value: tlsCert })
@@ -69,7 +77,24 @@ export default function AddHostModal({ show, onClose, onSuccess }: AddHostModalP
     setFormData({ ...formData, connection_type: type, host_url: url })
   }
 
-  if (!show) return null
+  if (!show && !showSSHWizard) return null
+
+  // Show SSH wizard instead of modal if SSH connection is chosen
+  if (showSSHWizard) {
+    return (
+      <SSHHostWizard
+        open={showSSHWizard}
+        onClose={() => {
+          setShowSSHWizard(false)
+          onClose()
+        }}
+        onComplete={(hostId) => {
+          setShowSSHWizard(false)
+          onSuccess()
+        }}
+      />
+    )
+  }
 
   return (
     <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
@@ -161,6 +186,15 @@ export default function AddHostModal({ show, onClose, onSuccess }: AddHostModalP
                     {formData.connection_type === 'ssh' && 'SSH connection string'}
                   </small>
                 </div>
+                
+                {formData.connection_type === 'ssh' && (
+                  <div className="col-12">
+                    <div className="alert alert-info">
+                      <i className="mdi mdi-information-outline me-1"></i>
+                      SSH connections require additional setup. Click "Create Host" to start the SSH configuration wizard.
+                    </div>
+                  </div>
+                )}
                 
                 {formData.connection_type === 'tcp' && (
                   <div className="col-12">
@@ -257,7 +291,8 @@ export default function AddHostModal({ show, onClose, onSuccess }: AddHostModalP
                 className="btn btn-primary"
                 disabled={createMutation.isPending}
               >
-                {createMutation.isPending ? 'Creating...' : 'Create Host'}
+                {createMutation.isPending ? 'Creating...' : 
+                 formData.connection_type === 'ssh' ? 'Start SSH Setup' : 'Create Host'}
               </button>
             </div>
           </form>

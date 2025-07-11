@@ -2,7 +2,7 @@ from fastapi import APIRouter
 
 from app.api.v1.endpoints import (
     auth, users, containers, images, system, health, hosts, dashboard, volumes, networks,
-    swarm, swarms, nodes, services, secrets, configs
+    swarm, swarms, nodes, services, secrets, configs, wizards
 )
 
 api_router = APIRouter()
@@ -14,6 +14,9 @@ api_router.include_router(users.router, prefix="/users", tags=["users"])
 # Docker host management
 api_router.include_router(hosts.router, prefix="/hosts", tags=["hosts"])
 api_router.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard"])
+
+# Wizard framework
+api_router.include_router(wizards.router, prefix="/wizards", tags=["wizards"])
 
 # Container management
 api_router.include_router(containers.router, prefix="/containers", tags=["containers"])

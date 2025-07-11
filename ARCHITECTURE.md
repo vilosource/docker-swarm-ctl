@@ -679,6 +679,128 @@ async def detailed_health_check():
     return health_status
 ```
 
+## Wizard Framework
+
+### Overview
+
+The platform includes a comprehensive wizard framework for guiding users through complex multi-step configuration processes. This is particularly useful for setting up SSH hosts, initializing swarm clusters, and deploying services.
+
+### Wizard Architecture
+
+```python
+# Wizard Instance Model
+class WizardInstance(BaseModel):
+    id: UUID
+    user_id: UUID
+    wizard_type: WizardType  # e.g., "ssh_host_setup", "swarm_init"
+    version: int
+    resource_id: Optional[UUID]  # ID of created resource
+    resource_type: Optional[str]  # Type of created resource
+    current_step: int
+    total_steps: int
+    status: WizardStatus  # in_progress, completed, cancelled, failed
+    state: Dict[str, Any]  # JSONB field for step data
+    metadata: Dict[str, Any]  # JSONB field for wizard metadata
+    created_at: datetime
+    updated_at: datetime
+    completed_at: Optional[datetime]
+```
+
+### SSH Host Setup Wizard
+
+The SSH host setup wizard guides users through:
+
+1. **Connection Details** - Host URL, SSH port, display name
+2. **Authentication** - SSH key generation/import or password
+3. **SSH Test** - Verify SSH connectivity
+4. **Docker Test** - Verify Docker API access
+5. **Confirmation** - Tags and finalization
+
+Features:
+- ED25519 SSH key generation
+- Encrypted credential storage
+- Connection testing with detailed feedback
+- Pauseable/resumable wizard state
+- Hosts created with `setup_pending` status
+
+### Wizard API Endpoints
+
+```python
+# Start a new wizard
+POST /api/v1/wizards/start
+{
+    "wizard_type": "ssh_host_setup",
+    "initial_state": {}
+}
+
+# Update current step data
+PUT /api/v1/wizards/{wizard_id}/step
+{
+    "step_data": {
+        "connection_name": "Production Server",
+        "host_url": "ssh://admin@server.example.com"
+    }
+}
+
+# Navigate between steps
+POST /api/v1/wizards/{wizard_id}/next
+POST /api/v1/wizards/{wizard_id}/previous
+
+# Test current step
+POST /api/v1/wizards/{wizard_id}/test
+{
+    "test_type": "ssh_connection"
+}
+
+# Complete wizard
+POST /api/v1/wizards/{wizard_id}/complete
+
+# Cancel wizard
+POST /api/v1/wizards/{wizard_id}/cancel
+
+# Generate SSH key pair
+POST /api/v1/wizards/generate-ssh-key?comment=user@host
+```
+
+### Frontend Wizard Components
+
+```typescript
+// Base wizard modal component
+<WizardModal
+    title="SSH Host Setup"
+    currentStep={currentStep}
+    totalSteps={totalSteps}
+    onNext={handleNext}
+    onPrevious={handlePrevious}
+    onCancel={handleCancel}
+>
+    {renderCurrentStep()}
+</WizardModal>
+
+// Step components
+<ConnectionDetailsStep wizard={wizard} onChange={updateStepData} />
+<AuthenticationStep wizard={wizard} onChange={updateStepData} />
+<SSHTestStep wizard={wizard} onTest={runTest} />
+<DockerTestStep wizard={wizard} onTest={runTest} />
+<ConfirmationStep wizard={wizard} onChange={updateStepData} />
+```
+
+### State Persistence
+
+Wizard state is stored in PostgreSQL JSONB fields, allowing:
+- Complex nested data structures
+- Efficient querying
+- Atomic updates
+- Schema flexibility
+
+Important: JSONB fields require reassignment for updates:
+```python
+# Correct way to update JSONB
+new_state = dict(wizard.state)
+new_state.update(step_data)
+wizard.state = new_state  # Reassignment triggers SQLAlchemy tracking
+```
+
 ## Initial Data & Seeds
 
 ### Database Initialization

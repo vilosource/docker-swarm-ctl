@@ -69,7 +69,7 @@ def handle_api_errors(
                 logger.error(f"{op_name} failed - Unexpected error: {e}", exc_info=True)
                 raise HTTPException(
                     status_code=500,
-                    detail=f"Internal server error during {op_name}"
+                    detail=f"Internal server error during {op_name}: {str(e)}"
                 )
         return wrapper
     return decorator

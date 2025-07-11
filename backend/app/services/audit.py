@@ -1,4 +1,4 @@
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Union
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, desc
@@ -14,12 +14,16 @@ async def audit_log(
     user: User,
     action: str,
     resource_type: Optional[str] = None,
-    resource_id: Optional[str] = None,
+    resource_id: Optional[Union[str, UUID]] = None,
     host_id: Optional[UUID] = None,
     details: Optional[Dict[str, Any]] = None,
     request: Optional[Request] = None
 ) -> AuditLog:
     """Helper function to create audit logs"""
+    # Convert UUID to string if necessary
+    if isinstance(resource_id, UUID):
+        resource_id = str(resource_id)
+        
     audit_entry = AuditLog(
         user_id=user.id,
         action=action,
@@ -46,11 +50,15 @@ class AuditService:
         user: User,
         action: str,
         resource_type: Optional[str] = None,
-        resource_id: Optional[str] = None,
+        resource_id: Optional[Union[str, UUID]] = None,
         host_id: Optional[UUID] = None,
         details: Optional[Dict[str, Any]] = None,
         request: Optional[Request] = None
     ) -> AuditLog:
+        # Convert UUID to string if necessary
+        if isinstance(resource_id, UUID):
+            resource_id = str(resource_id)
+            
         audit_log = AuditLog(
             user_id=user.id,
             action=action,

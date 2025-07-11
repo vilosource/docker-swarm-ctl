@@ -76,7 +76,7 @@ export interface PaginatedResponse<T> {
 
 export type HostType = 'standalone' | 'swarm_manager' | 'swarm_worker'
 export type ConnectionType = 'unix' | 'tcp' | 'ssh'
-export type HostStatus = 'pending' | 'healthy' | 'unhealthy' | 'unreachable'
+export type HostStatus = 'pending' | 'setup_pending' | 'healthy' | 'unhealthy' | 'unreachable'
 
 export interface HostTag {
   id: string
@@ -152,3 +152,6 @@ export interface UserHostPermission {
   granted_by?: string
   granted_at: string
 }
+
+export type WizardType = 'ssh_host_setup' | 'swarm_init' | 'swarm_join' | 'service_deployment'
+export type WizardStatus = 'in_progress' | 'completed' | 'cancelled' | 'failed'

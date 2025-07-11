@@ -6,10 +6,12 @@ from app.models.docker_host import (
     HostTag, HostConnectionStats, HostType, 
     ConnectionType, HostStatus
 )
+from app.models.wizard import WizardInstance, WizardStatus, WizardType
 
 __all__ = [
     "User", "UserRole", "AuditLog", "RefreshToken",
     "DockerHost", "HostCredential", "UserHostPermission",
     "HostTag", "HostConnectionStats", "HostType",
-    "ConnectionType", "HostStatus"
+    "ConnectionType", "HostStatus",
+    "WizardInstance", "WizardStatus", "WizardType"
 ]

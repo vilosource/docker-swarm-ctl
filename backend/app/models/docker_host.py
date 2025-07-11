@@ -22,6 +22,7 @@ class ConnectionType(str, enum.Enum):
 
 class HostStatus(str, enum.Enum):
     pending = "pending"
+    setup_pending = "setup_pending"  # Host created but setup wizard not completed
     healthy = "healthy"
     unhealthy = "unhealthy"
     unreachable = "unreachable"
@@ -71,7 +72,7 @@ class HostCredential(Base):
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     host_id = Column(UUID(as_uuid=True), ForeignKey("docker_hosts.id", ondelete="CASCADE"), nullable=False)
-    credential_type = Column(String(50), nullable=False)  # tls_cert, tls_key, tls_ca, ssh_key, password
+    credential_type = Column(String(50), nullable=False)  # tls_cert, tls_key, tls_ca, ssh_private_key, ssh_password, ssh_private_key_passphrase, ssh_user, ssh_known_hosts
     encrypted_value = Column(Text, nullable=False)
     credential_metadata = Column(JSON, nullable=True)  # Additional info like fingerprints
     created_at = Column(DateTime, server_default=func.now())

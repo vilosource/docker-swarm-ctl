@@ -6,9 +6,20 @@ from app.models import HostType, ConnectionType, HostStatus
 
 
 class HostCredentialCreate(BaseModel):
-    credential_type: str = Field(..., description="Type of credential (tls_cert, tls_key, tls_ca, ssh_key)")
+    credential_type: str = Field(..., description="Type of credential (tls_cert, tls_key, tls_ca, ssh_private_key, ssh_password, ssh_private_key_passphrase, ssh_user, ssh_known_hosts)")
     credential_value: str = Field(..., description="The credential value (will be encrypted)")
     credential_metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata")
+    
+    @validator('credential_type')
+    def validate_credential_type(cls, v):
+        valid_types = [
+            'tls_cert', 'tls_key', 'tls_ca',  # TLS credentials
+            'ssh_private_key', 'ssh_password', 'ssh_private_key_passphrase',  # SSH credentials
+            'ssh_user', 'ssh_known_hosts', 'use_ssh_config'  # SSH configuration
+        ]
+        if v not in valid_types:
+            raise ValueError(f"Invalid credential type. Must be one of: {', '.join(valid_types)}")
+        return v
 
 
 class HostTagCreate(BaseModel):

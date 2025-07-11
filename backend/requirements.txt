@@ -20,6 +20,7 @@ python-dotenv==1.0.0
 
 # Docker
 docker==7.0.0
+paramiko>=3.0.0  # SSH support for Docker connections
 
 # API Utils
 pydantic==2.5.3

@@ -3,11 +3,13 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { hostsApi } from '@/api/hosts'
+import { wizardsApi } from '@/api/wizards'
 import { DockerHost, HostStatus } from '@/types'
 import { useAuthStore } from '@/store/authStore'
 import { useToast } from '@/hooks/useToast'
 import AddHostModal from '@/components/hosts/AddHostModal'
 import EditHostModal from '@/components/hosts/EditHostModal'
+import { SSHHostWizard } from '@/components/wizards'
 
 export default function Hosts() {
   const { user } = useAuthStore()
@@ -16,6 +18,7 @@ export default function Hosts() {
   const navigate = useNavigate()
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingHost, setEditingHost] = useState<DockerHost | null>(null)
+  const [resumeWizardId, setResumeWizardId] = useState<string | null>(null)
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['hosts'],
@@ -56,6 +59,8 @@ export default function Hosts() {
         return <span className="badge bg-danger">Unhealthy</span>
       case 'pending':
         return <span className="badge bg-warning">Pending</span>
+      case 'setup_pending':
+        return <span className="badge bg-info">Setup Required</span>
       case 'unreachable':
         return <span className="badge bg-secondary">Unreachable</span>
       default:
@@ -92,6 +97,18 @@ export default function Hosts() {
   const handleDelete = async (host: DockerHost) => {
     if (window.confirm(`Are you sure you want to delete host "${host.name}"?`)) {
       deleteMutation.mutate(host.id)
+    }
+  }
+
+  const handleResumeSetup = async (host: DockerHost) => {
+    // Find the wizard for this host
+    const wizardsResult = await wizardsApi.listPending('ssh_host_setup')
+    const wizard = wizardsResult.wizards.find(w => w.resource_id === host.id)
+    
+    if (wizard) {
+      setResumeWizardId(wizard.id)
+    } else {
+      showToast('No pending setup found for this host', 'error')
     }
   }
 
@@ -205,21 +222,33 @@ export default function Hosts() {
                           </td>
                           <td>
                             <div className="btn-group btn-group-sm" role="group">
-                              <button
-                                className="btn btn-light"
-                                onClick={() => navigate(`/hosts/${host.id}/swarm`)}
-                                title="Swarm"
-                              >
-                                <i className="mdi mdi-cloud"></i>
-                              </button>
-                              <button
-                                className="btn btn-light"
-                                onClick={() => testConnectionMutation.mutate(host.id)}
-                                disabled={testConnectionMutation.isPending}
-                                title="Test Connection"
-                              >
-                                <i className="mdi mdi-connection"></i>
-                              </button>
+                              {host.status === 'setup_pending' ? (
+                                <button
+                                  className="btn btn-primary"
+                                  onClick={() => handleResumeSetup(host)}
+                                  title="Resume Setup"
+                                >
+                                  <i className="mdi mdi-play"></i> Resume Setup
+                                </button>
+                              ) : (
+                                <>
+                                  <button
+                                    className="btn btn-light"
+                                    onClick={() => navigate(`/hosts/${host.id}/swarm`)}
+                                    title="Swarm"
+                                  >
+                                    <i className="mdi mdi-cloud"></i>
+                                  </button>
+                                  <button
+                                    className="btn btn-light"
+                                    onClick={() => testConnectionMutation.mutate(host.id)}
+                                    disabled={testConnectionMutation.isPending}
+                                    title="Test Connection"
+                                  >
+                                    <i className="mdi mdi-connection"></i>
+                                  </button>
+                                </>
+                              )}
                               <button
                                 className="btn btn-light"
                                 onClick={() => setEditingHost(host)}
@@ -290,6 +319,19 @@ export default function Hosts() {
           onClose={() => setEditingHost(null)}
           onSuccess={() => {
             setEditingHost(null)
+            queryClient.invalidateQueries({ queryKey: ['hosts'] })
+          }}
+        />
+      )}
+
+      {/* Resume SSH Setup Wizard */}
+      {resumeWizardId && (
+        <SSHHostWizard
+          open={!!resumeWizardId}
+          wizardId={resumeWizardId}
+          onClose={() => setResumeWizardId(null)}
+          onComplete={() => {
+            setResumeWizardId(null)
             queryClient.invalidateQueries({ queryKey: ['hosts'] })
           }}
         />
