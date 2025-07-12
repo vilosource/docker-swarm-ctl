@@ -181,13 +181,14 @@ async def disk_usage(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ):
+    from fastapi.responses import JSONResponse
     if host_id:
         # Multi-host mode
         docker_service = DockerServiceFactory.create(current_user, db, multi_host=True)
         try:
             df = await docker_service.get_disk_usage(host_id=host_id)
             
-            return {
+            return JSONResponse(content={
                 "host_id": host_id,
                 "layers_size": df.get("LayersSize", 0),
                 "images": {
@@ -211,7 +212,7 @@ async def disk_usage(
                         if vol.get("RefCount") == 0
                     )
                 }
-            }
+            })
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     else:
@@ -220,7 +221,7 @@ async def disk_usage(
         try:
             df = client.df()
             
-            return {
+            return JSONResponse(content={
                 "layers_size": df.get("LayersSize", 0),
                 "images": {
                     "count": len(df.get("Images", [])),
@@ -243,6 +244,6 @@ async def disk_usage(
                         if vol.get("RefCount") == 0
                     )
                 }
-            }
+            })
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))

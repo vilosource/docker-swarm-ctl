@@ -172,7 +172,9 @@ def standard_response(
     """
     def decorator(func: Callable[P, T]) -> Callable[P, T]:
         @functools.wraps(func)
-        async def wrapper(*args: P.args, **kwargs: P.kwargs) -> Dict[str, str]:
+        async def wrapper(*args: P.args, **kwargs: P.kwargs):
+            from fastapi.responses import JSONResponse
+            
             # Execute the function
             await func(*args, **kwargs)
             
@@ -198,7 +200,7 @@ def standard_response(
                     params["action"] = action
             
             message = message_template.format(**params)
-            return {"message": message}
+            return JSONResponse(content={"message": message})
         return wrapper
     return decorator
 

@@ -7,6 +7,7 @@ Separates business rules from API endpoints and database operations.
 
 from typing import List, Optional, Dict, Any
 from uuid import UUID
+from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 
@@ -166,12 +167,50 @@ class HostService:
             info = client.info()
             version = client.version()
             
-            # Update host status
-            await self.repository.update_status(
-                host_id,
-                status="healthy",
-                version_info=version
-            )
+            # Check actual swarm status and update host type accordingly
+            swarm_info = info.get("Swarm", {})
+            swarm_state = swarm_info.get("LocalNodeState", "inactive")
+            
+            # Determine the correct host type based on actual swarm status
+            update_data = {
+                "status": "healthy",
+                **{k: v for k, v in {
+                    "docker_version": version.get("Version"),
+                    "api_version": version.get("ApiVersion"),
+                    "os_type": info.get("OSType"),
+                    "architecture": info.get("Architecture"),
+                    "last_health_check": datetime.utcnow()
+                }.items() if v is not None}
+            }
+            
+            if swarm_state == "active":
+                # Host is actually in a swarm, determine role
+                node_info = swarm_info.get("RemoteManagers")
+                control_available = swarm_info.get("ControlAvailable", False)
+                
+                if control_available:
+                    # This node is a manager
+                    update_data["host_type"] = "swarm_manager"
+                    # Check if it's the leader (only one leader per swarm)
+                    update_data["is_leader"] = swarm_info.get("Cluster", {}).get("ID") == swarm_info.get("NodeID")
+                else:
+                    # This node is a worker
+                    update_data["host_type"] = "swarm_worker"
+                    update_data["is_leader"] = False
+                
+                # Set swarm metadata
+                cluster_info = swarm_info.get("Cluster", {})
+                update_data["swarm_id"] = cluster_info.get("ID")
+                
+            else:
+                # Host is not in a swarm, should be standalone
+                update_data["host_type"] = "standalone"
+                update_data["is_leader"] = False
+                update_data["swarm_id"] = None
+                update_data["cluster_name"] = None
+            
+            # Update host with all the new information
+            await self.repository.update(host_id, update_data)
             
             logger.info(f"Host {host.name} connection test successful")
             
