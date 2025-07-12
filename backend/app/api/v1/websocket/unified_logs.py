@@ -101,12 +101,12 @@ class UnifiedLogWebSocketHandler:
                 # to avoid issues with singleton providers in multi-host mode
                 if source_type == LogSourceType.CONTAINER:
                     from app.services.logs.providers.container_logs import ContainerLogSource
-                    from app.services.docker_connection_manager import get_docker_connection_manager
-                    provider = ContainerLogSource(connection_manager=get_docker_connection_manager())
+                    from app.services.async_docker_connection_manager import get_async_docker_connection_manager
+                    provider = ContainerLogSource(connection_manager=get_async_docker_connection_manager())
                 elif source_type == LogSourceType.SERVICE:
                     from app.services.logs.providers.service_logs import ServiceLogSource
-                    from app.services.docker_connection_manager import get_docker_connection_manager
-                    provider = ServiceLogSource(connection_manager=get_docker_connection_manager())
+                    from app.services.async_docker_connection_manager import get_async_docker_connection_manager
+                    provider = ServiceLogSource(connection_manager=get_async_docker_connection_manager())
                 else:
                     provider = self.router.get_provider(source_type)
             except ValueError as e:

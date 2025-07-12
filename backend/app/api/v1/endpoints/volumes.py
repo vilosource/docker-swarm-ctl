@@ -14,7 +14,7 @@ from app.core.rate_limit import rate_limit
 from app.schemas.volume import (
     VolumeCreate, VolumeResponse, VolumeInspect, VolumePruneResponse
 )
-from app.services.docker_service import IDockerService, DockerServiceFactory
+from app.services.async_docker_service import IAsyncDockerService, AsyncDockerServiceFactory
 from app.models.user import User
 from app.api.decorators import audit_operation
 from app.api.decorators_enhanced import handle_api_errors, standard_response
@@ -27,9 +27,9 @@ router = APIRouter()
 async def get_docker_service(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
-) -> IDockerService:
-    """Dependency to get Docker service instance"""
-    return DockerServiceFactory.create(current_user, db, multi_host=True)
+) -> IAsyncDockerService:
+    """Dependency to get async Docker service instance"""
+    return AsyncDockerServiceFactory.create(current_user, db, multi_host=True)
 
 
 def format_volume(volume_data) -> VolumeResponse:
@@ -53,7 +53,7 @@ def format_volume(volume_data) -> VolumeResponse:
 async def list_volumes(
     filters: Optional[str] = Query(None, description="JSON encoded filters"),
     host_id: Optional[str] = Query(None, description="Docker host ID"),
-    docker_service: IDockerService = Depends(get_docker_service)
+    docker_service: IAsyncDockerService = Depends(get_docker_service)
 ):
     """List volumes from specified or all Docker hosts"""
     filter_dict = None
@@ -77,7 +77,7 @@ async def create_volume(
     volume: VolumeCreate,
     host_id: Optional[str] = Query(None, description="Docker host ID"),
     current_user: User = Depends(require_role("operator")),
-    docker_service: IDockerService = Depends(get_docker_service),
+    docker_service: IAsyncDockerService = Depends(get_docker_service),
     db: AsyncSession = Depends(get_db)
 ):
     """Create a new volume on specified or default Docker host"""
@@ -97,7 +97,7 @@ async def create_volume(
 async def get_volume(
     volume_name: str,
     host_id: Optional[str] = Query(None, description="Docker host ID"),
-    docker_service: IDockerService = Depends(get_docker_service)
+    docker_service: IAsyncDockerService = Depends(get_docker_service)
 ):
     """Get volume details"""
     volume_data = await docker_service.get_volume(volume_name, host_id)
@@ -117,7 +117,7 @@ async def remove_volume(
     force: bool = Query(False, description="Force removal"),
     host_id: Optional[str] = Query(None, description="Docker host ID"),
     current_user: User = Depends(require_role("operator")),
-    docker_service: IDockerService = Depends(get_docker_service),
+    docker_service: IAsyncDockerService = Depends(get_docker_service),
     db: AsyncSession = Depends(get_db)
 ):
     """Remove a volume"""
@@ -134,7 +134,7 @@ async def prune_volumes(
     filters: Optional[str] = Query(None, description="JSON encoded filters"),
     host_id: Optional[str] = Query(None, description="Docker host ID"),
     current_user: User = Depends(require_role("admin")),
-    docker_service: IDockerService = Depends(get_docker_service),
+    docker_service: IAsyncDockerService = Depends(get_docker_service),
     db: AsyncSession = Depends(get_db)
 ):
     """Remove all unused volumes"""

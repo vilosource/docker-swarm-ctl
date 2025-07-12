@@ -9,6 +9,7 @@ from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, Query, Request, Response
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import datetime
 import json
 
 from app.db.session import get_db
@@ -18,7 +19,7 @@ from app.core.rate_limit import rate_limit
 from app.schemas.container import (
     ContainerCreate, ContainerResponse, ContainerStats, ContainerInspect
 )
-from app.services.docker_service import IDockerService, DockerServiceFactory
+from app.services.async_docker_service import IAsyncDockerService, AsyncDockerServiceFactory
 from app.models.user import User
 from app.api.decorators import audit_operation, handle_docker_errors
 from app.api.decorators_enhanced import (
@@ -34,15 +35,57 @@ router = APIRouter()
 
 
 def format_container(container_data) -> ContainerResponse:
-    """Format container data for response"""
+    """Format async container data for response"""
+    
+    def convert_ports_to_dict(ports_list):
+        """Convert aiodocker ports list to docker-py compatible dict format"""
+        if not ports_list or not isinstance(ports_list, list):
+            return {}
+        
+        ports_dict = {}
+        for port_info in ports_list:
+            if isinstance(port_info, dict):
+                # aiodocker format: {'PrivatePort': 80, 'Type': 'tcp', 'PublicPort': 80, 'IP': '0.0.0.0'}
+                private_port = port_info.get('PrivatePort')
+                port_type = port_info.get('Type', 'tcp')
+                public_port = port_info.get('PublicPort')
+                ip = port_info.get('IP', '0.0.0.0')
+                
+                if private_port:
+                    port_key = f"{private_port}/{port_type}"
+                    if public_port:
+                        # Port is bound to host
+                        if port_key not in ports_dict:
+                            ports_dict[port_key] = []
+                        ports_dict[port_key].append({
+                            'HostIp': ip,
+                            'HostPort': str(public_port)
+                        })
+                    else:
+                        # Port is exposed but not bound
+                        if port_key not in ports_dict:
+                            ports_dict[port_key] = None
+        
+        return ports_dict
+    
+    def convert_created_to_datetime(created_str):
+        """Convert ISO string to datetime object"""
+        if isinstance(created_str, str):
+            try:
+                return datetime.fromisoformat(created_str.replace('Z', '+00:00'))
+            except ValueError:
+                # Fallback to current time if parsing fails
+                return datetime.utcnow()
+        return created_str
+    
     return ContainerResponse(
         id=container_data.id,
         name=container_data.name,
         image=container_data.image,
         status=container_data.status,
         state=container_data.state,
-        created=container_data.created,
-        ports=container_data.ports,
+        created=convert_created_to_datetime(container_data.created),
+        ports=convert_ports_to_dict(container_data.ports),
         labels=container_data.labels,
         host_id=container_data.host_id
     )
@@ -51,9 +94,9 @@ def format_container(container_data) -> ContainerResponse:
 async def get_docker_service(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
-) -> IDockerService:
-    """Dependency to get Docker service instance"""
-    return DockerServiceFactory.create(current_user, db, multi_host=True)
+) -> IAsyncDockerService:
+    """Dependency to get async Docker service instance"""
+    return AsyncDockerServiceFactory.create(current_user, db, multi_host=True)
 
 
 @router.get("/", response_model=List[ContainerResponse])
@@ -62,7 +105,7 @@ async def list_containers(
     all: bool = Query(False, description="Show all containers"),
     filters: Optional[str] = Query(None, description="JSON encoded filters"),
     host_id: Optional[str] = Query(None, description="Docker host ID"),
-    docker_service: IDockerService = Depends(get_docker_service)
+    docker_service: IAsyncDockerService = Depends(get_docker_service)
 ):
     """List containers from specified or default Docker host"""
     filter_dict = None
@@ -91,7 +134,7 @@ async def create_container(
     host_id: Optional[str] = Query(None, description="Docker host ID"),
     current_user: User = Depends(require_role("operator")),
     db: AsyncSession = Depends(get_db),
-    docker_service: IDockerService = Depends(get_docker_service)
+    docker_service: IAsyncDockerService = Depends(get_docker_service)
 ):
     """Create a new container on specified or default Docker host"""
     container_config = ContainerConfigBuilder.from_create_schema(config)
@@ -109,7 +152,7 @@ async def create_container(
 async def get_container(
     container_id: str,
     host_id: Optional[str] = Query(None, description="Docker host ID"),
-    docker_service: IDockerService = Depends(get_docker_service)
+    docker_service: IAsyncDockerService = Depends(get_docker_service)
 ):
     """Get container details"""
     container_data = await docker_service.get_container(
@@ -124,7 +167,7 @@ async def get_container(
 async def inspect_container(
     container_id: str,
     host_id: Optional[str] = Query(None, description="Docker host ID"),
-    docker_service: IDockerService = Depends(get_docker_service)
+    docker_service: IAsyncDockerService = Depends(get_docker_service)
 ):
     """Get detailed container inspection data"""
     attrs = await docker_service.inspect_container(
@@ -158,7 +201,7 @@ async def start_container(
     host_id: Optional[str] = Query(None, description="Docker host ID"),
     current_user: User = Depends(require_role("operator")),
     db: AsyncSession = Depends(get_db),
-    docker_service: IDockerService = Depends(get_docker_service)
+    docker_service: IAsyncDockerService = Depends(get_docker_service)
 ):
     """Start a stopped container"""
     await docker_service.start_container(
@@ -179,7 +222,7 @@ async def stop_container(
     host_id: Optional[str] = Query(None, description="Docker host ID"),
     current_user: User = Depends(require_role("operator")),
     db: AsyncSession = Depends(get_db),
-    docker_service: IDockerService = Depends(get_docker_service)
+    docker_service: IAsyncDockerService = Depends(get_docker_service)
 ):
     """Stop a running container"""
     await docker_service.stop_container(
@@ -201,7 +244,7 @@ async def restart_container(
     host_id: Optional[str] = Query(None, description="Docker host ID"),
     current_user: User = Depends(require_role("operator")),
     db: AsyncSession = Depends(get_db),
-    docker_service: IDockerService = Depends(get_docker_service)
+    docker_service: IAsyncDockerService = Depends(get_docker_service)
 ):
     """Restart a container"""
     await docker_service.restart_container(
@@ -224,7 +267,7 @@ async def remove_container(
     host_id: Optional[str] = Query(None, description="Docker host ID"),
     current_user: User = Depends(require_role("operator")),
     db: AsyncSession = Depends(get_db),
-    docker_service: IDockerService = Depends(get_docker_service)
+    docker_service: IAsyncDockerService = Depends(get_docker_service)
 ):
     """Remove a container"""
     await docker_service.remove_container(
@@ -244,7 +287,7 @@ async def get_container_logs(
     lines: int = Query(100, description="Number of lines to return"),
     timestamps: bool = Query(False, description="Add timestamps to logs"),
     host_id: Optional[str] = Query(None, description="Docker host ID"),
-    docker_service: IDockerService = Depends(get_docker_service)
+    docker_service: IAsyncDockerService = Depends(get_docker_service)
 ):
     """Get container logs"""
     logs = await docker_service.get_container_logs(
@@ -268,7 +311,7 @@ async def get_container_stats(
     request: Request,
     container_id: str,
     host_id: Optional[str] = Query(None, description="Docker host ID"),
-    docker_service: IDockerService = Depends(get_docker_service)
+    docker_service: IAsyncDockerService = Depends(get_docker_service)
 ):
     """Get real-time container resource usage statistics"""
     raw_stats = await docker_service.get_container_stats(

@@ -15,7 +15,7 @@ from app.schemas.network import (
     NetworkCreate, NetworkResponse, NetworkInspect, 
     NetworkConnect, NetworkDisconnect, NetworkPruneResponse
 )
-from app.services.docker_service import IDockerService, DockerServiceFactory
+from app.services.async_docker_service import IAsyncDockerService, AsyncDockerServiceFactory
 from app.models.user import User
 from app.api.decorators import audit_operation
 from app.api.decorators_enhanced import handle_api_errors, standard_response
@@ -28,9 +28,9 @@ router = APIRouter()
 async def get_docker_service(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
-) -> IDockerService:
-    """Dependency to get Docker service instance"""
-    return DockerServiceFactory.create(current_user, db, multi_host=True)
+) -> IAsyncDockerService:
+    """Dependency to get async Docker service instance"""
+    return AsyncDockerServiceFactory.create(current_user, db, multi_host=True)
 
 
 def format_network(network_data) -> NetworkResponse:
@@ -48,7 +48,7 @@ def format_network(network_data) -> NetworkResponse:
         Options=network_data.options or {},  # Handle None options
         Labels=network_data.labels or {},  # Handle None labels
         Created=network_data.created,
-        EnableIPv6=network_data.enable_ipv6,
+        EnableIPv6=getattr(network_data, 'enable_ipv6', False),  # Default to False if not present
         host_id=network_data.host_id,
         host_name=None  # TODO: Add host name to NetworkData if needed
     )
@@ -59,7 +59,7 @@ def format_network(network_data) -> NetworkResponse:
 async def list_networks(
     filters: Optional[str] = Query(None, description="JSON encoded filters"),
     host_id: Optional[str] = Query(None, description="Docker host ID"),
-    docker_service: IDockerService = Depends(get_docker_service)
+    docker_service: IAsyncDockerService = Depends(get_docker_service)
 ):
     """List networks from specified or all Docker hosts"""
     filter_dict = None
@@ -83,7 +83,7 @@ async def create_network(
     network: NetworkCreate,
     host_id: Optional[str] = Query(None, description="Docker host ID"),
     current_user: User = Depends(require_role("operator")),
-    docker_service: IDockerService = Depends(get_docker_service),
+    docker_service: IAsyncDockerService = Depends(get_docker_service),
     db: AsyncSession = Depends(get_db)
 ):
     """Create a new network on specified or default Docker host"""
@@ -107,7 +107,7 @@ async def create_network(
 async def get_network(
     network_id: str,
     host_id: Optional[str] = Query(None, description="Docker host ID"),
-    docker_service: IDockerService = Depends(get_docker_service)
+    docker_service: IAsyncDockerService = Depends(get_docker_service)
 ):
     """Get network details"""
     network_data = await docker_service.get_network(network_id, host_id)
@@ -126,7 +126,7 @@ async def remove_network(
     network_id: str,
     host_id: Optional[str] = Query(None, description="Docker host ID"),
     current_user: User = Depends(require_role("operator")),
-    docker_service: IDockerService = Depends(get_docker_service),
+    docker_service: IAsyncDockerService = Depends(get_docker_service),
     db: AsyncSession = Depends(get_db)
 ):
     """Remove a network"""
@@ -145,7 +145,7 @@ async def connect_container(
     connection: NetworkConnect,
     host_id: Optional[str] = Query(None, description="Docker host ID"),
     current_user: User = Depends(require_role("operator")),
-    docker_service: IDockerService = Depends(get_docker_service),
+    docker_service: IAsyncDockerService = Depends(get_docker_service),
     db: AsyncSession = Depends(get_db)
 ):
     """Connect a container to a network"""
@@ -170,7 +170,7 @@ async def disconnect_container(
     disconnection: NetworkDisconnect,
     host_id: Optional[str] = Query(None, description="Docker host ID"),
     current_user: User = Depends(require_role("operator")),
-    docker_service: IDockerService = Depends(get_docker_service),
+    docker_service: IAsyncDockerService = Depends(get_docker_service),
     db: AsyncSession = Depends(get_db)
 ):
     """Disconnect a container from a network"""
@@ -191,7 +191,7 @@ async def prune_networks(
     filters: Optional[str] = Query(None, description="JSON encoded filters"),
     host_id: Optional[str] = Query(None, description="Docker host ID"),
     current_user: User = Depends(require_role("admin")),
-    docker_service: IDockerService = Depends(get_docker_service),
+    docker_service: IAsyncDockerService = Depends(get_docker_service),
     db: AsyncSession = Depends(get_db)
 ):
     """Remove all unused networks"""

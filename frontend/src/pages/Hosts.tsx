@@ -139,7 +139,7 @@ export default function Hosts() {
 
   const isCircuitBreakerOpen = (hostId: string) => {
     const status = getCircuitBreakerStatus(hostId)
-    return status?.state === 'OPEN'
+    return status?.state === 'open'
   }
 
   if (isLoading) {

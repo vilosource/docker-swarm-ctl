@@ -5,6 +5,10 @@ from contextlib import asynccontextmanager
 import uuid
 import logging
 
+# Apply SSH patch before any other imports that might use docker
+from app.services.ssh_docker_patch import apply_ssh_docker_patch
+apply_ssh_docker_patch()
+
 from app.core.config import settings
 from app.core.exceptions import AppException
 from app.core.logging_config import setup_logging

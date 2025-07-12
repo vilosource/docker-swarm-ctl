@@ -15,7 +15,7 @@ from app.repositories.host_repository import HostRepository
 from app.models import DockerHost, User, HostTag, HostCredential, UserHostPermission
 from app.schemas.docker_host import DockerHostCreate as HostCreate, DockerHostUpdate as HostUpdate
 from app.services.encryption import get_encryption_service
-from app.services.docker_connection_manager import get_docker_connection_manager
+from app.services.async_docker_connection_manager import get_async_docker_connection_manager
 from app.core.exceptions import DockerConnectionError, ValidationError
 from app.core.logging import logger
 
@@ -32,7 +32,7 @@ class HostService:
         self.db = db
         self.repository = HostRepository(db)
         self.encryption = get_encryption_service()
-        self.connection_manager = get_docker_connection_manager()
+        self.connection_manager = get_async_docker_connection_manager()
     
     async def create_host(
         self,
@@ -156,16 +156,16 @@ class HostService:
         host = await self.repository.get_by_id_or_404(host_id)
         
         try:
-            # Test connection
+            # Test connection using async connection manager
             client = await self.connection_manager.get_client(
                 str(host.id),
                 user,
                 self.db
             )
             
-            # Get Docker info
-            info = client.info()
-            version = client.version()
+            # Get Docker info (both are async calls now)
+            info = await client.system.info()
+            version = await client.version()
             
             # Check actual swarm status and update host type accordingly
             swarm_info = info.get("Swarm", {})

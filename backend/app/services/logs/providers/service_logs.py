@@ -15,7 +15,7 @@ from docker.models.services import Service
 
 from app.core.exceptions import ResourceNotFoundError, DockerOperationError
 from app.core.logging import logger
-from app.services.docker_connection_manager import get_docker_connection_manager
+from app.services.async_docker_connection_manager import get_async_docker_connection_manager
 from app.models import User
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -39,7 +39,7 @@ class ServiceLogSource(LogSource):
             connection_manager: Optional connection manager (for multi-host)
         """
         self.docker_client = docker_client
-        self.connection_manager = connection_manager or get_docker_connection_manager()
+        self.connection_manager = connection_manager or get_async_docker_connection_manager()
         self._timestamp_pattern = re.compile(
             r'^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z)\s+(.*)$'
         )

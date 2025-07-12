@@ -141,7 +141,7 @@ export interface DiskUsage {
 }
 
 export interface CircuitBreakerStatus {
-  state: 'CLOSED' | 'OPEN' | 'HALF_OPEN'
+  state: 'closed' | 'open' | 'half_open'
   failure_count: number
   last_failure_time?: string
   consecutive_successes: number

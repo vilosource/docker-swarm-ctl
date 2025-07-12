@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Query
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Dict, Optional
 
@@ -19,7 +20,7 @@ router = APIRouter()
 @router.get("/health")
 async def health_check():
     """Basic health check endpoint"""
-    return {"status": "healthy", "service": "docker-control-platform"}
+    return JSONResponse(content={"status": "healthy", "service": "docker-control-platform"})
 
 
 @router.get("/feature-flags", response_model=Dict[str, bool])
@@ -27,7 +28,7 @@ async def get_feature_flags(
     current_user: User = Depends(require_admin)
 ):
     """Get current feature flags status (admin only)"""
-    return get_all_feature_flags()
+    return JSONResponse(content=get_all_feature_flags())
 
 
 @router.get("/circuit-breakers")
@@ -36,7 +37,7 @@ async def get_circuit_breakers(
 ):
     """Get circuit breaker status for all hosts (admin only)"""
     manager = get_circuit_breaker_manager()
-    return manager.get_all_status()
+    return JSONResponse(content=manager.get_all_status())
 
 
 @router.post("/circuit-breakers/{breaker_name}/reset")
@@ -49,7 +50,7 @@ async def reset_circuit_breaker(
     """Reset a specific circuit breaker (admin only)"""
     manager = get_circuit_breaker_manager()
     await manager.reset(breaker_name)
-    return {"message": f"Circuit breaker '{breaker_name}' has been reset"}
+    return JSONResponse(content={"message": f"Circuit breaker '{breaker_name}' has been reset"})
 
 
 @router.get("/info")
@@ -66,7 +67,7 @@ async def get_system_info(
             info = await docker_service.get_system_info(host_id=host_id)
             version = await docker_service.get_version(host_id=host_id)
             
-            return {
+            return JSONResponse(content={
                 "host_id": host_id,
                 "docker_version": version.get("Version"),
                 "api_version": version.get("ApiVersion"),
@@ -82,7 +83,7 @@ async def get_system_info(
                 "cpu_count": info.get("NCPU"),
                 "architecture": info.get("Architecture"),
                 "registry_config": info.get("RegistryConfig", {})
-            }
+            })
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     else:
@@ -92,7 +93,7 @@ async def get_system_info(
             info = client.info()
             version = client.version()
             
-            return {
+            return JSONResponse(content={
                 "docker_version": version.get("Version"),
                 "api_version": version.get("ApiVersion"),
                 "os": info.get("OperatingSystem"),
@@ -107,7 +108,7 @@ async def get_system_info(
                 "cpu_count": info.get("NCPU"),
                 "architecture": info.get("Architecture"),
                 "registry_config": info.get("RegistryConfig", {})
-            }
+            })
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
@@ -122,14 +123,15 @@ async def get_version(
         # Multi-host mode
         docker_service = DockerServiceFactory.create(current_user, db, multi_host=True)
         try:
-            return await docker_service.get_version(host_id=host_id)
+            version = await docker_service.get_version(host_id=host_id)
+            return JSONResponse(content=version)
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     else:
         # Legacy single-host mode
         client = get_docker_client()
         try:
-            return client.version()
+            return JSONResponse(content=client.version())
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
@@ -159,7 +161,7 @@ async def system_prune(
             request=request
         )
         
-        return {
+        return JSONResponse(content={
             "message": "System prune completed",
             "space_reclaimed": result.get("SpaceReclaimed", 0),
             "deleted": {
@@ -168,7 +170,7 @@ async def system_prune(
                 "volumes": result.get("VolumesDeleted", []) if volumes else [],
                 "networks": result.get("NetworksDeleted", [])
             }
-        }
+        })
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -181,7 +183,6 @@ async def disk_usage(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ):
-    from fastapi.responses import JSONResponse
     if host_id:
         # Multi-host mode
         docker_service = DockerServiceFactory.create(current_user, db, multi_host=True)

@@ -10,12 +10,11 @@ from datetime import datetime
 from typing import AsyncIterator, Optional, List, Any, Dict
 import re
 
-from docker.errors import NotFound, APIError
-from docker.models.containers import Container
+# Remove docker-py imports - using aiodocker now
 
 from app.core.exceptions import ResourceNotFoundError, DockerOperationError
 from app.core.logging import logger
-from app.services.docker_connection_manager import get_docker_connection_manager
+from app.services.async_docker_connection_manager import get_async_docker_connection_manager
 from app.models import User
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -39,7 +38,7 @@ class ContainerLogSource(LogSource):
             connection_manager: Optional connection manager (for multi-host)
         """
         self.docker_client = docker_client
-        self.connection_manager = connection_manager or get_docker_connection_manager()
+        self.connection_manager = connection_manager or get_async_docker_connection_manager()
         self._timestamp_pattern = re.compile(
             r'^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z)\s+(.*)$'
         )
@@ -104,53 +103,49 @@ class ContainerLogSource(LogSource):
                 raise ValueError("host_id, user, and db required for multi-host mode")
             client = await self.connection_manager.get_client(host_id, user, db)
         
-        # Get container
-        try:
-            container = await self._get_container(client, resource_id)
-        except NotFound:
-            raise ResourceNotFoundError("container", resource_id)
-        except APIError as e:
-            raise DockerOperationError("get_container", str(e))
+        # Get container using aiodocker
+        container = await self._get_container(client, resource_id)
         
-        # Prepare log options
+        # Prepare log options for aiodocker
         log_kwargs = {
-            'stream': True,
+            'stdout': True,
+            'stderr': True,
             'follow': follow,
             'timestamps': timestamps
         }
         
         if tail is not None:
-            log_kwargs['tail'] = tail
+            log_kwargs['tail'] = tail if tail != 'all' else None
         if since is not None:
             log_kwargs['since'] = since
         if until is not None:
             log_kwargs['until'] = until
         
-        # Get logs from container
-        loop = asyncio.get_event_loop()
-        
-        def get_logs_sync():
-            try:
-                return container.logs(**log_kwargs)
-            except Exception as e:
-                logger.error(f"Error getting container logs: {e}")
-                raise
-        
-        # Get the log stream
-        log_stream = await loop.run_in_executor(None, get_logs_sync)
+        # Get logs from container using aiodocker async interface
+        try:
+            # aiodocker log() returns different types based on follow parameter
+            if follow:
+                # For follow=True, it returns an async generator
+                log_stream = container.log(**log_kwargs)
+            else:
+                # For follow=False, it returns a list/string that can be awaited
+                log_stream = await container.log(**log_kwargs)
+        except Exception as e:
+            logger.error(f"Error getting container logs: {e}")
+            raise DockerOperationError("get_logs", str(e))
         
         # Process log stream
         async for log_line in self._process_log_stream(log_stream, resource_id, host_id):
             yield log_line
     
-    async def _get_container(self, client, container_id: str) -> Container:
-        """Get container object."""
-        loop = asyncio.get_event_loop()
-        
-        def get_container_sync():
-            return client.containers.get(container_id)
-        
-        return await loop.run_in_executor(None, get_container_sync)
+    async def _get_container(self, client, container_id: str):
+        """Get container object using aiodocker."""
+        try:
+            return await client.containers.get(container_id)
+        except Exception as e:
+            if "No such container" in str(e) or "404" in str(e):
+                raise ResourceNotFoundError("container", container_id)
+            raise DockerOperationError("get_container", str(e))
     
     async def _process_log_stream(
         self,
@@ -158,45 +153,31 @@ class ContainerLogSource(LogSource):
         container_id: str,
         host_id: Optional[str] = None
     ) -> AsyncIterator[LogEntry]:
-        """Process the log stream and yield LogEntry objects."""
-        loop = asyncio.get_event_loop()
-        
-        def read_next_line():
-            """Read next line from log stream."""
-            try:
-                # For streaming logs, iterate through the generator
+        """Process the aiodocker log stream and yield LogEntry objects."""
+        try:
+            # Check if log_stream is an async generator (follow=True case)
+            if hasattr(log_stream, '__aiter__'):
+                # Handle async generator for follow=True
+                async for log_chunk in log_stream:
+                    if log_chunk and log_chunk.strip():
+                        yield self._parse_container_log(log_chunk.strip(), container_id, host_id)
+            elif isinstance(log_stream, list):
+                # Handle list of log lines (follow=False case)
                 for line in log_stream:
-                    if line:
-                        return line
-                return None
-            except StopIteration:
-                return None
-            except Exception as e:
-                logger.error(f"Error reading log line: {e}")
-                return None
-        
-        while True:
-            # Read next line in executor
-            line = await loop.run_in_executor(None, read_next_line)
-            
-            if line is None:
-                break
-            
-            # Decode line
-            if isinstance(line, bytes):
-                line_str = line.decode('utf-8', errors='replace').strip()
+                    if line and line.strip():
+                        yield self._parse_container_log(line.strip(), container_id, host_id)
+            elif isinstance(log_stream, str):
+                # Handle single string with newlines (follow=False case)
+                for line in log_stream.split('\n'):
+                    if line.strip():
+                        yield self._parse_container_log(line.strip(), container_id, host_id)
             else:
-                line_str = str(line).strip()
-            
-            if not line_str:
-                continue
-            
-            # Parse the log line
-            entry = self._parse_container_log(line_str, container_id, host_id)
-            yield entry
-            
-            # Small delay to prevent CPU spinning
-            await asyncio.sleep(0.001)
+                # Handle other formats
+                logger.warning(f"Unexpected log stream format: {type(log_stream)}")
+                
+        except Exception as e:
+            logger.error(f"Error processing log stream: {e}")
+            raise
     
     def _parse_container_log(
         self,

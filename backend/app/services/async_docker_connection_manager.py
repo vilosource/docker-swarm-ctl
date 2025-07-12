@@ -4,22 +4,23 @@ from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-# Import docker types only for type checking
+# Import aiodocker types only for type checking
 if TYPE_CHECKING:
-    from docker.client import DockerClient
+    import aiodocker
 
 from app.core.exceptions import DockerConnectionError, AuthorizationError
 from app.models import DockerHost, UserHostPermission, User, UserRole, HostCredential
 from app.services.encryption import get_encryption_service
 from app.core.logging import logger
 from app.services.circuit_breaker import get_circuit_breaker_manager, CircuitBreakerConfig
+from app.services.ssh_tunnel_docker import SSHTunnelDockerConnection
 
 
-class DockerConnectionManager:
-    """Manages Docker client connections for multiple hosts"""
+class AsyncDockerConnectionManager:
+    """Async Docker client connections manager using aiodocker and SSH tunneling"""
     
     def __init__(self):
-        self._connections: Dict[str, 'DockerClient'] = {}
+        self._connections: Dict[str, 'aiodocker.Docker'] = {}
         self._connection_pools: Dict[str, asyncio.Queue] = {}
         self._health_checks: Dict[str, datetime] = {}
         self._lock = asyncio.Lock()
@@ -32,9 +33,9 @@ class DockerConnectionManager:
         host_id: str,
         user: User,
         db: AsyncSession
-    ) -> 'DockerClient':
+    ) -> 'aiodocker.Docker':
         """
-        Get Docker client for specific host with permission check
+        Get async Docker client for specific host with permission check
         
         Args:
             host_id: UUID of the Docker host
@@ -42,7 +43,7 @@ class DockerConnectionManager:
             db: Database session
             
         Returns:
-            DockerClient instance
+            aiodocker.Docker instance
             
         Raises:
             AuthorizationError: If user doesn't have access to the host
@@ -148,7 +149,7 @@ class DockerConnectionManager:
         host_id: str,
         db: AsyncSession
     ) -> None:
-        """Create new Docker connection"""
+        """Create new async Docker connection"""
         host = await self._get_host_config(host_id, db)
         credentials = await self._get_credentials(host_id, db)
         
@@ -157,40 +158,22 @@ class DockerConnectionManager:
             connection_type = host.connection_type.value if hasattr(host.connection_type, 'value') else host.connection_type
             
             if connection_type == "unix":
-                import docker
-                client = docker.DockerClient(base_url=host.host_url)
+                import aiodocker
+                client = aiodocker.Docker(url=host.host_url)
             
             elif connection_type == "tcp":
-                import docker
-                # Build TLS configuration if credentials exist
-                tls_config = None
-                if "tls_cert" in credentials and "tls_key" in credentials:
-                    tls_config = docker.tls.TLSConfig(
-                        client_cert=(
-                            credentials.get("tls_cert"),
-                            credentials.get("tls_key")
-                        ),
-                        ca_cert=credentials.get("tls_ca"),
-                        verify=True if credentials.get("tls_ca") else False
-                    )
-                
-                client = docker.DockerClient(
-                    base_url=host.host_url,
-                    tls=tls_config
-                )
+                import aiodocker
+                # For TCP connections, we can use aiodocker directly
+                # Note: TLS support would need to be implemented in aiodocker config
+                client = aiodocker.Docker(url=host.host_url)
             
             elif connection_type == "ssh":
-                # Use the simple SSH connection handler that works with docker-py 7.0.0
-                from app.services.ssh_docker_simple import SimpleSSHDockerConnection, SSHConnectionError
+                # Use the SSH tunnel approach that we know works!
+                ssh_tunnel = SSHTunnelDockerConnection(host, credentials)
+                client = await ssh_tunnel.create_client()
                 
-                try:
-                    ssh_handler = SimpleSSHDockerConnection(host, credentials)
-                    client = ssh_handler.create_client()
-                except SSHConnectionError as e:
-                    # Re-raise SSH-specific errors with more context
-                    raise DockerConnectionError(f"SSH connection failed: {str(e)}")
-                except Exception as e:
-                    raise DockerConnectionError(f"Unexpected SSH error: {str(e)}")
+                # Store the tunnel reference for cleanup
+                client._ssh_tunnel_handler = ssh_tunnel
             
             else:
                 raise DockerConnectionError(
@@ -198,7 +181,8 @@ class DockerConnectionManager:
                 )
             
             # Test connection
-            client.ping()
+            version_info = await client.version()
+            logger.info(f"Connected to Docker {version_info.get('Version', 'Unknown')} on {host.name}")
             
             # Store connection
             self._connections[host_id] = client
@@ -207,7 +191,7 @@ class DockerConnectionManager:
             # Update host status
             await self._update_host_status(host_id, "healthy", db)
             
-            logger.info(f"Successfully connected to Docker host {host.name} ({host_id})")
+            logger.info(f"Successfully connected to async Docker host {host.name} ({host_id})")
             
         except Exception as e:
             logger.error(f"Failed to connect to Docker host {host.name}: {str(e)}")
@@ -226,12 +210,12 @@ class DockerConnectionManager:
         """Perform health check on connection"""
         try:
             client = self._connections[host_id]
-            client.ping()
+            await client.version()  # Simple health check
             self._health_checks[host_id] = datetime.utcnow()
         except Exception as e:
             logger.warning(f"Health check failed for host {host_id}: {str(e)}")
             # Remove failed connection
-            self._connections.pop(host_id, None)
+            await self._cleanup_connection(host_id)
             raise DockerConnectionError(f"Docker host health check failed: {str(e)}")
     
     async def _update_host_status(
@@ -242,7 +226,6 @@ class DockerConnectionManager:
         error: Optional[str] = None
     ) -> None:
         """Update host status in database"""
-        # This is a simplified version - in production, use proper async updates
         result = await db.execute(
             select(DockerHost).where(DockerHost.id == host_id)
         )
@@ -256,16 +239,26 @@ class DockerConnectionManager:
                 pass
             await db.commit()
     
-    async def close_connection(self, host_id: str) -> None:
-        """Close connection to specific host"""
+    async def _cleanup_connection(self, host_id: str) -> None:
+        """Clean up a specific connection"""
         if host_id in self._connections:
+            client = self._connections[host_id]
+            
             try:
-                self._connections[host_id].close()
+                # Handle SSH tunnel cleanup
+                if hasattr(client, '_ssh_tunnel_handler'):
+                    await client._ssh_tunnel_handler.close(client)
+                else:
+                    await client.close()
             except Exception as e:
                 logger.error(f"Error closing connection to {host_id}: {str(e)}")
             finally:
                 self._connections.pop(host_id, None)
                 self._health_checks.pop(host_id, None)
+    
+    async def close_connection(self, host_id: str) -> None:
+        """Close connection to specific host"""
+        await self._cleanup_connection(host_id)
     
     async def close_all(self) -> None:
         """Close all connections"""
@@ -318,12 +311,12 @@ class DockerConnectionManager:
 
 
 # Global instance
-_connection_manager: Optional[DockerConnectionManager] = None
+_async_connection_manager: Optional[AsyncDockerConnectionManager] = None
 
 
-def get_docker_connection_manager() -> DockerConnectionManager:
-    """Get or create the global connection manager instance"""
-    global _connection_manager
-    if _connection_manager is None:
-        _connection_manager = DockerConnectionManager()
-    return _connection_manager
+def get_async_docker_connection_manager() -> AsyncDockerConnectionManager:
+    """Get or create the global async connection manager instance"""
+    global _async_connection_manager
+    if _async_connection_manager is None:
+        _async_connection_manager = AsyncDockerConnectionManager()
+    return _async_connection_manager

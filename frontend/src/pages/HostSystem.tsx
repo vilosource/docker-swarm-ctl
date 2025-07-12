@@ -61,7 +61,7 @@ export default function HostSystem() {
   
   const isCircuitBreakerOpen = () => {
     const status = getCircuitBreakerStatus()
-    return status?.state === 'OPEN'
+    return status?.state === 'open'
   }
   
   if (infoLoading) {

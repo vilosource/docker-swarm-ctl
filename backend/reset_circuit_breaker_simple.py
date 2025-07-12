@@ -26,7 +26,7 @@ async def reset_circuit_breaker(host_id: str):
 
 async def main():
     # The host ID from the error message
-    host_id = "9cb548a1-ff0d-410e-8fb9-e21854a50b82"
+    host_id = "46bcfe68-af69-43b6-a500-f137d3a299c8"
     await reset_circuit_breaker(host_id)
 
 
