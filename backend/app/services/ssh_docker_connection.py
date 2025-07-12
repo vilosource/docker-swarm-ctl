@@ -285,85 +285,112 @@ class SSHDockerConnection:
         Raises:
             SSHConnectionError: If connection fails
         """
+        import os
+        import tempfile
+        
+        # Store original environment
+        env_backup = dict(os.environ)
+        temp_files = []
+        
         try:
-            # For docker-py 7.0.0, we'll use paramiko directly with SSHHTTPAdapter
-            # Format: ssh://[user@]host[:port]
+            # For docker-py 7.0.0, SSH is handled by the system SSH client
+            # We need to set up the environment properly for it to work
             docker_host_url = f"ssh://{self.ssh_user}@{self.ssh_host}:{self.ssh_port}"
             
-            # Get paramiko SSH client  
+            # First, test connection with paramiko to get host key
             ssh_client = self._get_ssh_client()
             
             try:
-                # Create custom SSHHTTPAdapter with our paramiko client
-                from docker.transport import SSHHTTPAdapter
+                # Get the host key from our successful paramiko connection
+                transport = ssh_client.get_transport()
+                host_key = transport.get_remote_server_key()
                 
-                # Create the adapter but prevent it from creating its own SSH client
-                class CustomSSHHTTPAdapter(SSHHTTPAdapter):
-                    def __init__(self, ssh_client, base_url, **kwargs):
-                        # Initialize parent without creating a new SSH connection
-                        super().__init__(base_url, shell_out=True, **kwargs)
-                        # Replace with our already-connected client
-                        self.ssh_client = ssh_client
-                        self.ssh_host = base_url
-                        if base_url.startswith('ssh://'):
-                            self.ssh_host = base_url[len('ssh://'):]
-                        # Mark as already connected
-                        self._connected = True
-                    
-                    def _create_paramiko_client(self, base_url):
-                        # Override to prevent creating a new client
-                        pass
-                    
-                    def _connect(self):
-                        # Override to prevent reconnecting
-                        if hasattr(self, '_connected') and self._connected:
-                            return
-                        super()._connect()
+                # Create temporary known_hosts file with the host key
+                known_hosts_fd, known_hosts_path = tempfile.mkstemp(prefix='docker_known_hosts_')
+                temp_files.append(known_hosts_path)
                 
-                # Create the adapter with our SSH client
-                ssh_adapter = CustomSSHHTTPAdapter(
-                    ssh_client=ssh_client,
-                    base_url=docker_host_url,
-                    timeout=60,
-                    max_pool_size=10
-                )
+                with os.fdopen(known_hosts_fd, 'w') as f:
+                    # Format hostname for known_hosts
+                    if self.ssh_port != 22:
+                        hostname = f"[{self.ssh_host}]:{self.ssh_port}"
+                    else:
+                        hostname = self.ssh_host
+                    # Write host key in OpenSSH format
+                    key_line = f"{hostname} {host_key.get_name()} {host_key.get_base64()}\n"
+                    f.write(key_line)
                 
-                # Create API client
-                api_client = docker.APIClient(
+                # Build SSH command options
+                ssh_options = [
+                    '-o', f'UserKnownHostsFile={known_hosts_path}',
+                    '-o', 'StrictHostKeyChecking=yes',  # We have the key now
+                    '-o', 'BatchMode=yes',  # Non-interactive mode
+                    '-o', 'ConnectTimeout=30'
+                ]
+                
+                # Handle authentication
+                if 'ssh_private_key' in self.credentials:
+                    # Write private key to temporary file
+                    key_fd, key_path = tempfile.mkstemp(prefix='docker_ssh_key_', suffix='.pem')
+                    temp_files.append(key_path)
+                    os.write(key_fd, self.credentials['ssh_private_key'].encode())
+                    os.close(key_fd)
+                    os.chmod(key_path, 0o600)
+                    ssh_options.extend(['-i', key_path])
+                else:
+                    # Use SSH agent or default keys
+                    # Make sure we're not trying password auth in batch mode
+                    ssh_options.extend([
+                        '-o', 'PasswordAuthentication=no',
+                        '-o', 'PreferredAuthentications=publickey'
+                    ])
+                
+                # Close the paramiko client - docker-py will create its own connection
+                ssh_client.close()
+                
+                # Set environment for docker-py to use
+                ssh_command = 'ssh ' + ' '.join(ssh_options)
+                os.environ['DOCKER_SSH_COMMAND'] = ssh_command
+                
+                # Create Docker client with SSH support
+                # docker-py will use the system SSH client with our DOCKER_SSH_COMMAND
+                client = docker.DockerClient(
                     base_url=docker_host_url,
                     version='auto',
-                    timeout=60
+                    timeout=60,
+                    use_ssh_client=True
                 )
-                
-                # Replace the default adapter with our SSH adapter
-                # Docker uses 'http+docker' as the scheme internally
-                api_client._custom_adapter = ssh_adapter
-                api_client.mount('http+docker://ssh', ssh_adapter)
-                
-                # Create high-level client
-                # We can't use from_env() as it would create a new API client
-                client = docker.DockerClient()
-                client.api = api_client
                 
                 # Test the connection
                 client.ping()
                 
                 logger.info(f"Successfully connected to Docker via SSH at {self.ssh_host}")
                 
-                # Store SSH client reference to prevent garbage collection
-                client._ssh_client = ssh_client
+                # Store temp files info for cleanup on client close
+                client._ssh_temp_files = temp_files
+                client._ssh_env_backup = env_backup
                 
                 return client
                 
             except Exception:
                 # Close SSH connection on error
-                ssh_client.close()
+                if ssh_client and ssh_client.get_transport():
+                    ssh_client.close()
                 raise
-            
+                
         except docker.errors.DockerException as e:
             raise SSHConnectionError(f"Docker connection via SSH failed: {str(e)}")
         except Exception as e:
             raise SSHConnectionError(f"Unexpected error during SSH connection: {str(e)}")
+        finally:
+            # Clean up on error
+            if not hasattr(locals().get('client', None), '_ssh_temp_files'):
+                # Only clean up if we didn't successfully create a client
+                for temp_file in temp_files:
+                    if os.path.exists(temp_file):
+                        os.unlink(temp_file)
+                # Restore environment
+                os.environ.clear()
+                os.environ.update(env_backup)
     
     @staticmethod
     def validate_ssh_url(url: str) -> bool:
