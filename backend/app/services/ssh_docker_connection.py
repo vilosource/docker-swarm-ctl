@@ -352,7 +352,8 @@ class SSHDockerConnection:
                 os.environ['DOCKER_SSH_COMMAND'] = ssh_command
                 
                 # Create Docker client with SSH support
-                # docker-py will use the system SSH client with our DOCKER_SSH_COMMAND
+                # When use_ssh_client=True, docker-py uses shell_out mode for SSH
+                # DockerClient passes all args to APIClient internally
                 client = docker.DockerClient(
                     base_url=docker_host_url,
                     version='auto',
