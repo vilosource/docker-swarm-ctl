@@ -1,12 +1,15 @@
 import { useParams } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { systemApi } from '@/api/system'
 import { hostsApi } from '@/api/hosts'
 import PageTitle from '@/components/common/PageTitle'
 import { formatBytes } from '@/utils/format'
+import { useToast } from '@/hooks/useToast'
 
 export default function HostSystem() {
   const { hostId } = useParams<{ hostId: string }>()
+  const { showToast } = useToast()
+  const queryClient = useQueryClient()
   
   const { data: host } = useQuery({
     queryKey: ['hosts', hostId],
@@ -31,6 +34,35 @@ export default function HostSystem() {
     queryFn: () => systemApi.getDiskUsage(hostId),
     enabled: !!hostId,
   })
+  
+  const { data: circuitBreakers } = useQuery({
+    queryKey: ['circuit-breakers'],
+    queryFn: () => systemApi.getCircuitBreakers(),
+    refetchInterval: 5000 // Refresh every 5 seconds
+  })
+  
+  const resetCircuitBreakerMutation = useMutation({
+    mutationFn: () => systemApi.resetCircuitBreaker(`docker-host-${hostId}`),
+    onSuccess: () => {
+      showToast('Circuit breaker reset successfully', 'success')
+      queryClient.invalidateQueries({ queryKey: ['circuit-breakers'] })
+      queryClient.invalidateQueries({ queryKey: ['hosts'] })
+    },
+    onError: (error) => {
+      showToast('Failed to reset circuit breaker', 'error')
+    }
+  })
+  
+  const getCircuitBreakerStatus = () => {
+    if (!circuitBreakers || !hostId) return null
+    const breakerName = `docker-host-${hostId}`
+    return circuitBreakers[breakerName]
+  }
+  
+  const isCircuitBreakerOpen = () => {
+    const status = getCircuitBreakerStatus()
+    return status?.state === 'OPEN'
+  }
   
   if (infoLoading) {
     return (
@@ -72,6 +104,11 @@ export default function HostSystem() {
                       <i className={`mdi mdi-circle me-1`}></i>
                       {host.status.toUpperCase()}
                     </span>
+                    {isCircuitBreakerOpen() && (
+                      <span className="badge bg-warning ms-2 p-2" title="Circuit breaker is open">
+                        <i className="mdi mdi-alert"></i> Circuit Open
+                      </span>
+                    )}
                     {host.is_default && (
                       <span className="badge bg-info ms-2 p-2">DEFAULT</span>
                     )}
@@ -269,6 +306,16 @@ export default function HostSystem() {
             <div className="card-body">
               <h5 className="card-title mb-3">Quick Actions</h5>
               <div className="d-flex gap-2 flex-wrap">
+                {isCircuitBreakerOpen() && (
+                  <button 
+                    className="btn btn-danger"
+                    onClick={() => resetCircuitBreakerMutation.mutate()}
+                    disabled={resetCircuitBreakerMutation.isPending}
+                  >
+                    <i className="mdi mdi-refresh me-1"></i>
+                    Reset Circuit Breaker
+                  </button>
+                )}
                 <button 
                   className="btn btn-warning"
                   onClick={() => {
