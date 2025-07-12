@@ -286,37 +286,84 @@ class SSHDockerConnection:
             SSHConnectionError: If connection fails
         """
         try:
-            # Get SSH client
-            ssh_client = self._get_ssh_client()
-            
-            # docker-py expects the SSH client to be passed via use_ssh_client parameter
-            # The base_url should be in the format: ssh://user@host:port
+            # For docker-py 7.0.0, we'll use paramiko directly with SSHHTTPAdapter
+            # Format: ssh://[user@]host[:port]
             docker_host_url = f"ssh://{self.ssh_user}@{self.ssh_host}:{self.ssh_port}"
             
-            # Create Docker client with SSH transport
-            client = docker.DockerClient(
-                base_url=docker_host_url,
-                use_ssh_client=True,
-                ssh_client=ssh_client
-            )
+            # Get paramiko SSH client  
+            ssh_client = self._get_ssh_client()
             
-            # Test the connection
-            client.ping()
-            
-            logger.info(f"Successfully connected to Docker via SSH at {self.ssh_host}")
-            
-            return client
+            try:
+                # Create custom SSHHTTPAdapter with our paramiko client
+                from docker.transport import SSHHTTPAdapter
+                
+                # Create the adapter but prevent it from creating its own SSH client
+                class CustomSSHHTTPAdapter(SSHHTTPAdapter):
+                    def __init__(self, ssh_client, base_url, **kwargs):
+                        # Initialize parent without creating a new SSH connection
+                        super().__init__(base_url, shell_out=True, **kwargs)
+                        # Replace with our already-connected client
+                        self.ssh_client = ssh_client
+                        self.ssh_host = base_url
+                        if base_url.startswith('ssh://'):
+                            self.ssh_host = base_url[len('ssh://'):]
+                        # Mark as already connected
+                        self._connected = True
+                    
+                    def _create_paramiko_client(self, base_url):
+                        # Override to prevent creating a new client
+                        pass
+                    
+                    def _connect(self):
+                        # Override to prevent reconnecting
+                        if hasattr(self, '_connected') and self._connected:
+                            return
+                        super()._connect()
+                
+                # Create the adapter with our SSH client
+                ssh_adapter = CustomSSHHTTPAdapter(
+                    ssh_client=ssh_client,
+                    base_url=docker_host_url,
+                    timeout=60,
+                    max_pool_size=10
+                )
+                
+                # Create API client
+                api_client = docker.APIClient(
+                    base_url=docker_host_url,
+                    version='auto',
+                    timeout=60
+                )
+                
+                # Replace the default adapter with our SSH adapter
+                # Docker uses 'http+docker' as the scheme internally
+                api_client._custom_adapter = ssh_adapter
+                api_client.mount('http+docker://ssh', ssh_adapter)
+                
+                # Create high-level client
+                # We can't use from_env() as it would create a new API client
+                client = docker.DockerClient()
+                client.api = api_client
+                
+                # Test the connection
+                client.ping()
+                
+                logger.info(f"Successfully connected to Docker via SSH at {self.ssh_host}")
+                
+                # Store SSH client reference to prevent garbage collection
+                client._ssh_client = ssh_client
+                
+                return client
+                
+            except Exception:
+                # Close SSH connection on error
+                ssh_client.close()
+                raise
             
         except docker.errors.DockerException as e:
-            # Close SSH connection if Docker connection fails
-            if 'ssh_client' in locals():
-                ssh_client.close()
             raise SSHConnectionError(f"Docker connection via SSH failed: {str(e)}")
         except Exception as e:
-            # Ensure SSH connection is closed on any error
-            if 'ssh_client' in locals():
-                ssh_client.close()
-            raise
+            raise SSHConnectionError(f"Unexpected error during SSH connection: {str(e)}")
     
     @staticmethod
     def validate_ssh_url(url: str) -> bool:
