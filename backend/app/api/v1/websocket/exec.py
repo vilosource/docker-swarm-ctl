@@ -7,7 +7,7 @@ import struct
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.v1.websocket.auth import get_current_user_ws, check_permission
 from app.services.docker_client import DockerClientFactory
-from app.services.docker_connection_manager import get_docker_connection_manager
+from app.services.async_docker_connection_manager import get_async_docker_connection_manager
 from app.services.self_monitoring_detector import is_self_monitoring
 from app.db.session import get_db
 from app.models.user import User
@@ -44,9 +44,17 @@ async def container_exec_ws(
         # For multi-host, we need to get DB session and use connection manager
         from app.db.session import AsyncSessionLocal
         async with AsyncSessionLocal() as db:
-            connection_manager = get_docker_connection_manager()
+            connection_manager = get_async_docker_connection_manager()
             try:
+                # For exec, we need the raw docker client, not aiodocker
+                # This is a limitation - exec won't work with SSH hosts using aiodocker
                 docker = await connection_manager.get_client(host_id, user, db)
+                await websocket.send_json({
+                    "type": "error",
+                    "message": "Interactive terminal is not yet supported for SSH hosts. This feature is being implemented."
+                })
+                await websocket.close()
+                return
             except Exception as e:
                 await websocket.send_json({
                     "type": "error",

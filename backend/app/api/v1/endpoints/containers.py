@@ -170,10 +170,13 @@ async def inspect_container(
     docker_service: IAsyncDockerService = Depends(get_docker_service)
 ):
     """Get detailed container inspection data"""
-    attrs = await docker_service.inspect_container(
+    result = await docker_service.inspect_container(
         container_id=container_id,
         host_id=host_id
     )
+    
+    # Extract the actual inspect data from the result
+    attrs = result.get("inspect", {}) if isinstance(result, dict) and "inspect" in result else result
     
     env_list = attrs.get("Config", {}).get("Env", [])
     
@@ -290,17 +293,21 @@ async def get_container_logs(
     docker_service: IAsyncDockerService = Depends(get_docker_service)
 ):
     """Get container logs"""
-    logs = await docker_service.get_container_logs(
+    result = await docker_service.get_container_logs(
         container_id=container_id,
-        lines=lines,
+        tail=str(lines),
         timestamps=timestamps,
         host_id=host_id
     )
     
+    # Extract logs and host_id from the result
+    logs = result.get("logs", "") if isinstance(result, dict) else result
+    resolved_host_id = result.get("host_id", host_id) if isinstance(result, dict) else host_id
+    
     return {
         "container_id": container_id,
         "logs": logs,
-        "host_id": host_id
+        "host_id": resolved_host_id
     }
 
 
@@ -314,10 +321,13 @@ async def get_container_stats(
     docker_service: IAsyncDockerService = Depends(get_docker_service)
 ):
     """Get real-time container resource usage statistics"""
-    raw_stats = await docker_service.get_container_stats(
+    result = await docker_service.get_container_stats(
         container_id=container_id,
         host_id=host_id
     )
+    
+    # Extract stats from the result
+    raw_stats = result.get("stats", {}) if isinstance(result, dict) and "stats" in result else result
     
     # Use feature flag to determine calculation method
     if is_feature_enabled(FeatureFlag.USE_CONTAINER_STATS_CALCULATOR):

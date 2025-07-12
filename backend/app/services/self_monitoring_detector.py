@@ -138,3 +138,10 @@ def is_self_monitoring(container_id: str, docker_client: DockerClient) -> bool:
 def should_suppress_logs(container_id: str, docker_client: DockerClient) -> bool:
     """Check if logs should be suppressed for a container"""
     return _detector.should_suppress_logs(container_id, docker_client)
+
+
+async def is_self_monitoring_async(container_id: str, client) -> bool:
+    """Async version for aiodocker clients - currently just returns False"""
+    # TODO: Implement proper self-monitoring detection for aiodocker
+    # For now, return False to avoid blocking functionality
+    return False
