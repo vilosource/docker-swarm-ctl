@@ -1,5 +1,6 @@
 from sqlalchemy import Column, String, Boolean, DateTime, Enum
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import uuid
 import enum
@@ -25,3 +26,6 @@ class User(Base):
     role = Column(Enum(UserRole), nullable=False, default=UserRole.viewer)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    
+    # Relationships
+    wizard_instances = relationship("WizardInstance", back_populates="user", cascade="all, delete-orphan")

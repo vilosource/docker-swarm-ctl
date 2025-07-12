@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { formatDistanceToNow } from 'date-fns'
 import { api } from '@/api/client'
+import { useServices } from '@/hooks/useServices'
 
 interface HostInfo {
   id: string
@@ -44,6 +45,12 @@ export default function SwarmClusterDetail() {
     },
     enabled: !!swarmId
   })
+  
+  // Fetch services from the leader host
+  const { data: servicesData, isLoading: servicesLoading } = useServices(
+    swarm?.leader_host?.id || '',
+    undefined
+  )
   
   if (!swarmId) {
     return (
@@ -147,7 +154,7 @@ export default function SwarmClusterDetail() {
             <div className="card-body">
               <div className="text-center">
                 <i className="mdi mdi-apps text-info" style={{ fontSize: '2rem' }}></i>
-                <h3 className="mb-1">{swarm.service_count}</h3>
+                <h3 className="mb-1">{servicesData?.services?.length || swarm.service_count}</h3>
                 <p className="text-muted mb-0">Services</p>
                 <small className="text-muted">Running</small>
               </div>
@@ -191,7 +198,7 @@ export default function SwarmClusterDetail() {
                     style={{ cursor: 'pointer' }}
                   >
                     <i className="mdi mdi-apps me-1"></i>
-                    Services ({swarm.service_count})
+                    Services ({servicesData?.services?.length || swarm.service_count})
                   </a>
                 </li>
                 <li className="nav-item">
@@ -272,37 +279,101 @@ export default function SwarmClusterDetail() {
                 {/* Services Tab */}
                 {activeTab === 'services' && (
                   <div className="tab-pane show active">
-                    <h5 className="mt-3 mb-3">Swarm Services</h5>
-                    {swarm.service_count === 0 ? (
+                    <div className="d-flex justify-content-between align-items-center mt-3 mb-3">
+                      <h5 className="mb-0">Swarm Services</h5>
+                      <Link
+                        to={`/hosts/${swarm.leader_host.id}/services`}
+                        className="btn btn-primary btn-sm"
+                      >
+                        <i className="mdi mdi-plus me-1"></i>
+                        Create Service
+                      </Link>
+                    </div>
+                    
+                    {servicesLoading ? (
+                      <div className="text-center py-4">
+                        <div className="spinner-border" role="status">
+                          <span className="visually-hidden">Loading services...</span>
+                        </div>
+                      </div>
+                    ) : !servicesData || servicesData.services.length === 0 ? (
                       <div className="text-center py-4">
                         <i className="mdi mdi-apps" style={{ fontSize: '3rem', color: '#6c757d' }}></i>
                         <p className="text-muted mt-2">No services running in this swarm</p>
-                        <Link
-                          to={`/hosts/${swarm.leader_host.id}/services`}
-                          className="btn btn-primary btn-sm"
-                        >
-                          <i className="mdi mdi-plus me-1"></i>
-                          Create Service
-                        </Link>
-                        <p className="text-muted mt-3">
+                        <p className="text-muted">
                           <small>Services must be managed through a manager node</small>
                         </p>
                       </div>
                     ) : (
-                      <div className="text-center py-4">
-                        <p className="text-muted mb-3">
-                          This swarm has {swarm.service_count} service{swarm.service_count !== 1 ? 's' : ''} running
-                        </p>
-                        <Link
-                          to={`/hosts/${swarm.leader_host.id}/services`}
-                          className="btn btn-primary"
-                        >
-                          <i className="mdi mdi-eye me-1"></i>
-                          Manage Services
-                        </Link>
-                        <p className="text-muted mt-3">
-                          <small>Services are managed through the swarm leader node</small>
-                        </p>
+                      <div className="table-responsive">
+                        <table className="table table-hover mb-0">
+                          <thead>
+                            <tr>
+                              <th>Service Name</th>
+                              <th>Image</th>
+                              <th>Mode</th>
+                              <th>Replicas</th>
+                              <th>Ports</th>
+                              <th>Created</th>
+                              <th>Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {servicesData.services.map((service) => (
+                              <tr key={service.ID}>
+                                <td>
+                                  <strong>{service.name}</strong>
+                                </td>
+                                <td>
+                                  <code className="text-muted">{service.image}</code>
+                                </td>
+                                <td>
+                                  <span className={`badge ${
+                                    service.mode === 'replicated' ? 'bg-primary' : 'bg-info'
+                                  }`}>
+                                    {service.mode}
+                                  </span>
+                                </td>
+                                <td>
+                                  {service.mode === 'replicated' ? (
+                                    <span>{service.replicas || 0}</span>
+                                  ) : (
+                                    <span className="text-muted">-</span>
+                                  )}
+                                </td>
+                                <td>
+                                  {service.Endpoint?.Ports && service.Endpoint.Ports.length > 0 ? (
+                                    <div>
+                                      {service.Endpoint.Ports.map((port, idx) => (
+                                        <span key={idx} className="badge bg-secondary me-1">
+                                          {port.PublishedPort}:{port.TargetPort}/{port.Protocol}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <span className="text-muted">-</span>
+                                  )}
+                                </td>
+                                <td>
+                                  <small className="text-muted">
+                                    {formatDistanceToNow(new Date(service.CreatedAt), { addSuffix: true })}
+                                  </small>
+                                </td>
+                                <td>
+                                  <div className="btn-group btn-group-sm">
+                                    <Link
+                                      to={`/hosts/${swarm.leader_host.id}/services/${service.ID}`}
+                                      className="btn btn-light"
+                                      title="View Details"
+                                    >
+                                      <i className="mdi mdi-eye"></i>
+                                    </Link>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
                     )}
                   </div>

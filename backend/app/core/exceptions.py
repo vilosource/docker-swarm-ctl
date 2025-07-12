@@ -134,3 +134,7 @@ class DatabaseConnectionError(ExternalServiceError):
 class DockerStreamError(ExternalServiceError):
     def __init__(self, message: str = "Docker stream operation failed"):
         super().__init__(message, "DOCKER_STREAM_ERROR", status.HTTP_502_BAD_GATEWAY)
+
+
+# Common aliases for convenience
+NotFoundError = ResourceNotFoundError

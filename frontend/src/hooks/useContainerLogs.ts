@@ -1,92 +1,54 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
-import { useWebSocket } from './useWebSocket';
-import { useAuthStore } from '../store/authStore';
-
-export interface LogMessage {
-  type: 'log' | 'error' | 'ping';
-  timestamp: string;
-  data?: string;
-  message?: string;
-  container_id?: string;
-}
+import { useMemo } from 'react'
+import { useUnifiedLogStream } from './useUnifiedLogStream'
 
 export interface UseContainerLogsOptions {
-  follow?: boolean;
-  tail?: number;
-  timestamps?: boolean;
-  since?: string;
-  hostId?: string;
+  follow?: boolean
+  tail?: number
+  timestamps?: boolean
+  since?: string
+  hostId?: string
 }
 
 export function useContainerLogs(
   containerId: string | null,
   options: UseContainerLogsOptions = {}
 ) {
-  const [logs, setLogs] = useState<string[]>([]);
-  const [isStreaming, setIsStreaming] = useState(false);
-  const logsEndRef = useRef<HTMLDivElement>(null);
-  const { token } = useAuthStore();
-  
   const {
     follow = true,
     tail = 100,
     timestamps = true,
     since,
     hostId
-  } = options;
+  } = options
 
-  // Build WebSocket URL with query parameters
-  const wsUrl = containerId && token
-    ? `${import.meta.env.VITE_WS_URL}/containers/${containerId}/logs?token=${token}&follow=${follow}&tail=${tail}&timestamps=${timestamps}${since ? `&since=${since}` : ''}${hostId ? `&host_id=${hostId}` : ''}`
-    : null;
-  
-  // Debug logging
-  useEffect(() => {
-    if (wsUrl) {
-      console.log('WebSocket URL:', wsUrl);
-      console.log('Container ID:', containerId);
-      console.log('Token exists:', !!token);
-    }
-  }, [wsUrl, containerId, token]);
+  const {
+    logs: unifiedLogs,
+    isConnected,
+    isConnecting,
+    error,
+    clearLogs,
+    reconnect,
+    scrollToBottom,
+    logsEndRef
+  } = useUnifiedLogStream({
+    sourceType: 'container',
+    resourceId: containerId,
+    hostId,
+    tail,
+    follow,
+    timestamps,
+    enabled: !!containerId
+  })
 
-  const handleMessage = useCallback((message: LogMessage) => {
-    console.log('WebSocket message:', message);
-    if (message.type === 'log' && message.data) {
-      setLogs(prev => [...prev, message.data]);
-      setIsStreaming(true);
-    } else if (message.type === 'error') {
-      console.error('Log stream error:', message.message);
-      setIsStreaming(false);
-    }
-    // Ignore ping messages
-  }, []);
+  // Extract just the log data strings for backward compatibility
+  const logs = useMemo(() => {
+    return unifiedLogs
+      .filter(log => log.type === 'log' && log.data)
+      .map(log => log.data!)
+  }, [unifiedLogs])
 
-  const { isConnected, error, reconnect } = useWebSocket({
-    url: wsUrl,
-    onMessage: handleMessage,
-    enabled: !!containerId && !!token,
-  });
-
-  // Clear logs when container changes
-  useEffect(() => {
-    setLogs([]);
-    setIsStreaming(false);
-  }, [containerId]);
-
-  // Auto-scroll to bottom when new logs arrive
-  const scrollToBottom = useCallback(() => {
-    logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, []);
-
-  useEffect(() => {
-    if (isStreaming) {
-      scrollToBottom();
-    }
-  }, [logs, isStreaming, scrollToBottom]);
-
-  const clearLogs = useCallback(() => {
-    setLogs([]);
-  }, []);
+  // Determine if we're actively streaming (have received logs)
+  const isStreaming = isConnected && logs.length > 0
 
   return {
     logs,
@@ -96,6 +58,6 @@ export function useContainerLogs(
     clearLogs,
     reconnect,
     scrollToBottom,
-    logsEndRef,
-  };
+    logsEndRef
+  }
 }

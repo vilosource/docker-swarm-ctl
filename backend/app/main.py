@@ -15,6 +15,7 @@ from app.db.session import engine
 from app.db.base import Base
 from app.db.base_class import *  # noqa - Import all models
 from app.utils.redis import RedisClient
+from app.services.logs.stream_manager import get_stream_manager
 
 # Configure logging with self-monitoring filter
 logger = setup_logging()
@@ -29,10 +30,18 @@ async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     
+    # Start log stream manager
+    stream_manager = get_stream_manager()
+    await stream_manager.start()
+    
     yield
     
     # Shutdown
     logger.info("Shutting down...")
+    
+    # Stop log stream manager
+    await stream_manager.stop()
+    
     await RedisClient.close()
     await engine.dispose()
 
@@ -106,6 +115,24 @@ async def app_exception_handler(request: Request, exc: AppException):
                 "code": exc.code,
                 "message": str(exc),
                 "details": exc.details
+            },
+            "status": "error",
+            "request_id": getattr(request.state, "request_id", None)
+        }
+    )
+
+
+# Generic exception handler for unexpected errors
+@app.exception_handler(Exception)
+async def generic_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Unexpected error: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": {
+                "code": "internal_error",
+                "message": f"Internal server error: {str(exc)}",
+                "type": type(exc).__name__
             },
             "status": "error",
             "request_id": getattr(request.state, "request_id", None)

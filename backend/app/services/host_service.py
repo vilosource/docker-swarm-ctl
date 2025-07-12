@@ -176,12 +176,10 @@ class HostService:
             logger.info(f"Host {host.name} connection test successful")
             
             return {
-                "status": "healthy",
+                "success": True,
                 "message": "Connection successful",
                 "docker_version": version.get("Version"),
-                "api_version": version.get("ApiVersion"),
-                "containers": info.get("Containers", 0),
-                "images": info.get("Images", 0)
+                "api_version": version.get("ApiVersion")
             }
             
         except DockerConnectionError as e:
@@ -191,7 +189,7 @@ class HostService:
             logger.error(f"Host {host.name} connection test failed: {e}")
             
             return {
-                "status": "unhealthy",
+                "success": False,
                 "message": str(e),
                 "error": "connection_failed"
             }
@@ -202,7 +200,7 @@ class HostService:
             logger.error(f"Host {host.name} connection test error: {e}")
             
             return {
-                "status": "unhealthy",
+                "success": False,
                 "message": "Unexpected error during connection test",
                 "error": str(e)
             }

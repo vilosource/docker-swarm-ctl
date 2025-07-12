@@ -184,6 +184,8 @@ def standard_response(
                 # Try common patterns
                 if "container_id" in kwargs:
                     params["container_id"] = kwargs["container_id"]
+                if "host_id" in kwargs:
+                    params["host_id"] = kwargs["host_id"]
                 if "action" in message_template:
                     # Extract action from function name (e.g., "start_container" -> "started")
                     action = func.__name__.replace("_container", "").replace("_", " ")

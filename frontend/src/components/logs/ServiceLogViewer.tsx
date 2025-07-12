@@ -42,6 +42,17 @@ export default function ServiceLogViewer({
     autoConnect: true
   })
   
+  // Reconnect when tail or timestamps change
+  const previousTailRef = useRef(tail)
+  const previousTimestampsRef = useRef(showTimestamps)
+  useEffect(() => {
+    if ((previousTailRef.current !== tail || previousTimestampsRef.current !== showTimestamps) && isConnected) {
+      reconnect()
+    }
+    previousTailRef.current = tail
+    previousTimestampsRef.current = showTimestamps
+  }, [tail, showTimestamps, isConnected, reconnect])
+  
   // Auto-scroll to bottom when new logs arrive
   useEffect(() => {
     if (autoScroll && scrollRef.current) {
@@ -66,11 +77,11 @@ export default function ServiceLogViewer({
   
   const getLogLevel = (logData: string): 'error' | 'warn' | 'info' | 'debug' => {
     const lowerData = logData.toLowerCase()
-    if (lowerData.includes('error') || lowerData.includes('err') || lowerData.includes('exception')) {
+    if (lowerData.includes('error') || lowerData.includes('err:') || lowerData.includes('exception') || lowerData.includes('failed')) {
       return 'error'
     } else if (lowerData.includes('warn') || lowerData.includes('warning')) {
       return 'warn'
-    } else if (lowerData.includes('info')) {
+    } else if (lowerData.includes('info:') || lowerData.includes('[info]')) {
       return 'info'
     }
     return 'debug'
@@ -78,11 +89,11 @@ export default function ServiceLogViewer({
   
   const getLogLevelColor = (level: string) => {
     switch (level) {
-      case 'error': return 'text-red-400'
-      case 'warn': return 'text-yellow-400'
-      case 'info': return 'text-blue-400'
-      case 'debug': return 'text-gray-400'
-      default: return 'text-gray-300'
+      case 'error': return 'text-danger'
+      case 'warn': return 'text-warning'
+      case 'info': return 'text-info'
+      case 'debug': return 'text-secondary'
+      default: return 'text-light'
     }
   }
   
@@ -97,6 +108,11 @@ export default function ServiceLogViewer({
     // Filter by log level
     if (logLevel !== 'all') {
       const level = getLogLevel(log.data)
+      // For 'info' filter, show both 'info' and 'debug' logs
+      if (logLevel === 'info' && (level === 'info' || level === 'debug')) {
+        return true
+      }
+      // For other filters, match exactly
       if (level !== logLevel) {
         return false
       }
@@ -138,203 +154,238 @@ export default function ServiceLogViewer({
   }
   
   return (
-    <div className={`flex flex-col h-full ${className}`}>
+    <div className={`h-100 d-flex flex-column ${className}`}>
       {/* Header Controls */}
-      <div className="flex items-center justify-between p-3 bg-gray-800 border-b border-gray-700">
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-2">
-            <div className={`w-2 h-2 rounded-full ${
-              isConnected ? 'bg-green-500' : 
-              isConnecting ? 'bg-yellow-500' : 
-              'bg-red-500'
-            }`} />
-            <span className="text-sm text-gray-300">
+      <div className="border-bottom p-2">
+        <div className="row align-items-center">
+          <div className="col-auto">
+            <span className={`badge ${
+              isConnected ? 'bg-success' : 
+              isConnecting ? 'bg-warning' : 
+              'bg-danger'
+            }`}>
               {isConnected ? 'Connected' : 
                isConnecting ? 'Connecting...' : 
                'Disconnected'}
             </span>
+            <span className="text-muted ms-3">
+              Service: <strong>{serviceName || serviceId}</strong>
+            </span>
           </div>
           
-          <div className="text-sm text-gray-400">
-            Service: <span className="text-gray-200">{serviceName || serviceId}</span>
+          <div className="col">
+            <div className="input-group input-group-sm">
+              <span className="input-group-text">
+                <i className="mdi mdi-magnify"></i>
+              </span>
+              <input
+                type="text"
+                className="form-control"
+                placeholder="Search logs..."
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+              />
+            </div>
           </div>
-        </div>
-        
-        <div className="flex items-center space-x-2">
-          {/* Log Level Filter */}
-          <select 
-            value={logLevel}
-            onChange={(e) => setLogLevel(e.target.value as any)}
-            className="px-2 py-1 text-xs bg-gray-700 border border-gray-600 rounded text-gray-300"
-          >
-            <option value="all">All Levels</option>
-            <option value="error">Errors</option>
-            <option value="warn">Warnings</option>
-            <option value="info">Info</option>
-          </select>
           
-          {/* Text Filter */}
-          <input
-            type="text"
-            placeholder="Filter logs..."
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            className="px-2 py-1 text-xs bg-gray-700 border border-gray-600 rounded text-gray-300 placeholder-gray-500"
-          />
+          <div className="col-auto">
+            <select 
+              value={logLevel}
+              onChange={(e) => setLogLevel(e.target.value as any)}
+              className="form-select form-select-sm"
+            >
+              <option value="all">All Levels</option>
+              <option value="error">Errors</option>
+              <option value="warn">Warnings</option>
+              <option value="info">Info</option>
+            </select>
+          </div>
           
-          {/* Tail Lines */}
-          <select 
-            value={tail}
-            onChange={(e) => setTail(Number(e.target.value))}
-            className="px-2 py-1 text-xs bg-gray-700 border border-gray-600 rounded text-gray-300"
-            disabled={isConnected}
-          >
-            <option value={50}>50 lines</option>
-            <option value={100}>100 lines</option>
-            <option value={500}>500 lines</option>
-            <option value={1000}>1000 lines</option>
-          </select>
+          <div className="col-auto">
+            <select 
+              value={tail}
+              onChange={(e) => setTail(Number(e.target.value))}
+              className="form-select form-select-sm"
+            >
+              <option value={50}>Last 50 lines</option>
+              <option value={100}>Last 100 lines</option>
+              <option value={500}>Last 500 lines</option>
+              <option value={1000}>Last 1000 lines</option>
+            </select>
+          </div>
           
-          {/* Timestamps Toggle */}
-          <label className="flex items-center space-x-1 text-xs text-gray-400">
-            <input
-              type="checkbox"
-              checked={showTimestamps}
-              onChange={(e) => setShowTimestamps(e.target.checked)}
-              className="w-3 h-3"
-            />
-            <span>Timestamps</span>
-          </label>
+          <div className="col-auto">
+            <div className="form-check form-check-inline">
+              <input
+                className="form-check-input"
+                type="checkbox"
+                id="showTimestamps"
+                checked={showTimestamps}
+                onChange={(e) => setShowTimestamps(e.target.checked)}
+              />
+              <label className="form-check-label" htmlFor="showTimestamps">
+                Timestamps
+              </label>
+            </div>
+          </div>
+          
+          <div className="col-auto">
+            <div className="form-check form-check-inline">
+              <input
+                className="form-check-input"
+                type="checkbox"
+                id="autoScroll"
+                checked={autoScroll}
+                onChange={(e) => setAutoScroll(e.target.checked)}
+              />
+              <label className="form-check-label" htmlFor="autoScroll">
+                Auto-scroll
+              </label>
+            </div>
+          </div>
         </div>
       </div>
       
       {/* Action Bar */}
-      <div className="flex items-center justify-between p-2 bg-gray-800 border-b border-gray-700">
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={reconnect}
-            disabled={isConnecting}
-            className="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 rounded text-white"
-          >
-            {isConnecting ? 'Connecting...' : 'Reconnect'}
-          </button>
+      <div className="border-bottom p-2">
+        <div className="row align-items-center">
+          <div className="col-auto">
+            <div className="btn-group btn-group-sm">
+              <button
+                onClick={reconnect}
+                disabled={isConnecting}
+                className="btn btn-outline-primary"
+                title="Reconnect"
+              >
+                <i className="mdi mdi-refresh"></i>
+              </button>
+              
+              <button
+                onClick={clearLogs}
+                className="btn btn-outline-secondary"
+                title="Clear logs"
+              >
+                <i className="mdi mdi-notification-clear-all"></i>
+              </button>
+              
+              <button
+                onClick={copyToClipboard}
+                className="btn btn-outline-secondary"
+                title="Copy logs"
+              >
+                <i className="mdi mdi-content-copy"></i>
+              </button>
+              
+              <button
+                onClick={downloadLogs}
+                className="btn btn-outline-secondary"
+                title="Download logs"
+                disabled={logs.length === 0}
+              >
+                <i className="mdi mdi-download"></i>
+              </button>
+            </div>
+          </div>
           
-          <button
-            onClick={clearLogs}
-            className="px-3 py-1 text-xs bg-gray-600 hover:bg-gray-700 rounded text-white"
-          >
-            Clear
-          </button>
-          
-          <button
-            onClick={copyToClipboard}
-            className="px-3 py-1 text-xs bg-gray-600 hover:bg-gray-700 rounded text-white"
-          >
-            Copy
-          </button>
-          
-          <button
-            onClick={downloadLogs}
-            className="px-3 py-1 text-xs bg-gray-600 hover:bg-gray-700 rounded text-white"
-          >
-            Download
-          </button>
-        </div>
-        
-        <div className="flex items-center space-x-2">
-          <span className="text-xs text-gray-400">
-            {filteredLogs.length} / {logs.length} lines
-          </span>
-          
-          {!autoScroll && (
-            <button
-              onClick={scrollToBottom}
-              className="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700 rounded text-white"
-            >
-              ↓ Follow
-            </button>
-          )}
+          <div className="col text-end">
+            <span className="text-muted small">
+              {filteredLogs.length} / {logs.length} lines
+            </span>
+            
+            {!autoScroll && (
+              <button
+                onClick={scrollToBottom}
+                className="btn btn-sm btn-primary ms-2"
+              >
+                <i className="mdi mdi-arrow-down"></i> Follow
+              </button>
+            )}
+          </div>
         </div>
       </div>
       
       {/* Error Display */}
       {error && (
-        <div className="p-3 bg-red-900 border-b border-red-700 text-red-200 text-sm">
-          <div className="flex items-center justify-between">
-            <span>{error}</span>
-            <button
-              onClick={reconnect}
-              className="ml-2 px-2 py-1 text-xs bg-red-700 hover:bg-red-600 rounded"
-            >
-              Retry
-            </button>
-          </div>
+        <div className="alert alert-danger m-2" role="alert">
+          <i className="mdi mdi-alert-circle me-2"></i>
+          {error}
+          <button
+            onClick={reconnect}
+            className="btn btn-sm btn-danger float-end"
+          >
+            Retry
+          </button>
         </div>
       )}
       
       {/* Log Container */}
       <div 
         ref={scrollRef}
-        className="flex-1 overflow-auto bg-black text-gray-100 font-mono text-sm"
+        className="flex-grow-1 overflow-auto bg-dark text-light font-monospace p-3"
+        style={{
+          fontSize: '0.875rem',
+          lineHeight: '1.5',
+          minHeight: '200px'
+        }}
         onScroll={handleScroll}
       >
-        <div ref={logContainerRef} className="p-2">
-          {filteredLogs.length === 0 ? (
-            <div className="text-gray-500 text-center py-8">
-              {isConnecting ? 'Connecting to service logs...' : 'No logs to display'}
+        {!isConnected && !error && (
+          <div className="text-center py-5">
+            <div className="spinner-border text-light" role="status">
+              <span className="visually-hidden">Connecting...</span>
             </div>
-          ) : (
-            filteredLogs.map((log, index) => (
-              <div key={index} className="flex items-start py-0.5 hover:bg-gray-800">
-                {/* Timestamp */}
-                {showTimestamps && log.timestamp && (
-                  <span className="text-gray-500 text-xs mr-2 flex-shrink-0 w-20">
-                    {new Date(log.timestamp).toLocaleTimeString()}
+          </div>
+        )}
+        
+        {isConnected && filteredLogs.length === 0 && (
+          <div className="text-muted text-center py-5">
+            {filter ? 'No logs match your search' : 'No logs available'}
+          </div>
+        )}
+        
+        {filteredLogs.map((log, index) => {
+          const level = log.data ? getLogLevel(log.data) : 'info'
+          const levelColorClass = getLogLevelColor(level)
+          
+          return (
+            <div key={index} className="log-line d-flex" style={{ minHeight: '1.5rem' }}>
+              <span className="text-muted pe-3" style={{ minWidth: '50px', userSelect: 'none' }}>
+                {index + 1}
+              </span>
+              {showTimestamps && log.timestamp && (
+                <span className="text-info pe-3" style={{ minWidth: '100px' }}>
+                  {new Date(log.timestamp).toLocaleTimeString()}
+                </span>
+              )}
+              <span className="flex-grow-1" style={{ wordBreak: 'break-all' }}>
+                {log.type === 'log' && log.data ? (
+                  <span className={levelColorClass}>
+                    {log.data}
+                  </span>
+                ) : log.type === 'error' ? (
+                  <span className="text-danger">
+                    ERROR: {log.message}
+                  </span>
+                ) : log.type === 'connected' ? (
+                  <span className="text-success">
+                    ✓ {log.message}
+                  </span>
+                ) : log.type === 'disconnected' ? (
+                  <span className="text-warning">
+                    ⚠ {log.message}
+                  </span>
+                ) : (
+                  <span className="text-muted">
+                    {log.message}
                   </span>
                 )}
-                
-                {/* Log Content */}
-                <div className="flex-1 min-w-0">
-                  {log.type === 'log' && log.data ? (
-                    <span className={getLogLevelColor(getLogLevel(log.data))}>
-                      {log.data}
-                    </span>
-                  ) : log.type === 'error' ? (
-                    <span className="text-red-400">
-                      ERROR: {log.message}
-                    </span>
-                  ) : log.type === 'connected' ? (
-                    <span className="text-green-400">
-                      ✓ {log.message}
-                    </span>
-                  ) : log.type === 'disconnected' ? (
-                    <span className="text-yellow-400">
-                      ⚠ {log.message}
-                    </span>
-                  ) : (
-                    <span className="text-gray-400">
-                      {log.message}
-                    </span>
-                  )}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-      
-      {/* Footer */}
-      <div className="p-2 bg-gray-800 border-t border-gray-700 text-xs text-gray-400">
-        <div className="flex items-center justify-between">
-          <span>
-            Auto-scroll: {autoScroll ? 'ON' : 'OFF'}
-          </span>
-          <span>
-            Last updated: {logs.length > 0 && logs[logs.length - 1]?.timestamp 
-              ? formatDistanceToNow(new Date(logs[logs.length - 1].timestamp), { addSuffix: true })
-              : 'Never'}
-          </span>
-        </div>
+              </span>
+            </div>
+          )
+        })}
+        
+        {/* Scroll anchor */}
+        <div ref={logContainerRef} />
       </div>
     </div>
   )

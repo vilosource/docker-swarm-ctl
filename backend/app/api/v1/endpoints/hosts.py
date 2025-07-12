@@ -23,7 +23,7 @@ from app.services.host_service import HostService
 from app.models.user import User
 from app.api.decorators import audit_operation
 from app.api.decorators_enhanced import handle_api_errors, standard_response
-from app.core.exceptions import AuthorizationError
+from app.core.exceptions import AuthorizationError, ResourceNotFoundError
 
 
 router = APIRouter()
@@ -123,7 +123,7 @@ async def update_host(
 
 @router.delete("/{host_id}")
 @handle_api_errors("delete_host")
-@audit_operation("host.delete", "docker_host")
+@audit_operation("host.delete", "docker_host", lambda r: r.get("host_id"))
 @standard_response("Host {host_id} deleted successfully")
 async def delete_host(
     request: Request,
@@ -133,11 +133,19 @@ async def delete_host(
     host_service: HostService = Depends(get_host_service)
 ):
     """Delete a Docker host"""
+    # Get host details before deletion for audit purposes
+    host = await host_service.get_host_for_user(host_id, current_user, with_credentials=False)
+    if not host:
+        raise ResourceNotFoundError("docker_host", host_id)
+    
+    # Delete the host
     await host_service.delete_host(host_id)
+    
+    # Return host_id for standard_response decorator formatting
+    return {"host_id": host_id, "deleted_host_name": host.name}
 
 
 @router.post("/{host_id}/test", response_model=HostConnectionTest)
-@rate_limit("20/minute")
 @handle_api_errors("test_host_connection")
 @audit_operation("host.test_connection", "docker_host")
 async def test_host_connection(

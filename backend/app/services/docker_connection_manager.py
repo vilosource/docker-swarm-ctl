@@ -177,10 +177,17 @@ class DockerConnectionManager:
                 )
             
             elif connection_type == "ssh":
-                # SSH connection support (requires paramiko)
-                # For now, we'll use the standard Docker client
-                # In production, use docker-py's SSH support
-                client = docker.DockerClient(base_url=host.host_url)
+                # Use SSH connection handler
+                from app.services.ssh_docker_connection import SSHDockerConnection, SSHConnectionError
+                
+                try:
+                    ssh_handler = SSHDockerConnection(host, credentials)
+                    client = ssh_handler.create_client()
+                except SSHConnectionError as e:
+                    # Re-raise SSH-specific errors with more context
+                    raise DockerConnectionError(f"SSH connection failed: {str(e)}")
+                except Exception as e:
+                    raise DockerConnectionError(f"Unexpected SSH error: {str(e)}")
             
             else:
                 raise DockerConnectionError(

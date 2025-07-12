@@ -85,10 +85,18 @@ async def list_swarm_clusters(
             swarm_updated_at = swarm_info.get("UpdatedAt")
             
             # Get services count
-            services = await docker_service.list_services(str(leader_host.id))
+            services = await docker_service.list_services(host_id=str(leader_host.id))
             service_count = len(services)
         except Exception as e:
             logger.warning(f"Failed to get swarm details for {swarm_id}: {e}")
+        
+        # Get ready nodes count
+        ready_nodes = len(hosts)  # Default to all nodes ready
+        try:
+            nodes = await docker_service.list_nodes(str(leader_host.id))
+            ready_nodes = sum(1 for n in nodes if n.get("Status", {}).get("State") == "ready")
+        except Exception as e:
+            logger.warning(f"Failed to get nodes status for {swarm_id}: {e}")
         
         # Build cluster info
         cluster_info = {
@@ -99,6 +107,7 @@ async def list_swarm_clusters(
             "manager_count": manager_count,
             "worker_count": worker_count,
             "total_nodes": len(hosts),
+            "ready_nodes": ready_nodes,
             "service_count": service_count,
             "leader_host": {
                 "id": str(leader_host.id),
@@ -178,14 +187,14 @@ async def get_swarm_cluster(
             logger.warning(f"Could not get swarm info: {e}")
         
         try:
-            services = await docker_service.list_services(str(leader_host.id))
+            services = await docker_service.list_services(host_id=str(leader_host.id))
             service_count = len(services)
         except Exception as e:
             logger.warning(f"Could not get services: {e}")
         
         try:
             nodes = await docker_service.list_nodes(str(leader_host.id))
-            ready_nodes = sum(1 for n in nodes if n.get("state") == "ready")
+            ready_nodes = sum(1 for n in nodes if n.get("Status", {}).get("State") == "ready")
         except Exception as e:
             logger.warning(f"Could not get nodes: {e}")
         

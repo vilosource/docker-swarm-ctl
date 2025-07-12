@@ -352,8 +352,8 @@ export default function ServiceDetail() {
 
                 {/* Logs Tab */}
                 {activeTab === 'logs' && (
-                  <div className="tab-pane show active">
-                    <div className="mt-3" style={{ height: '600px' }}>
+                  <div className="tab-pane show active" style={{ height: '600px' }}>
+                    <div className="mt-3 h-100">
                       <ServiceLogViewer
                         hostId={hostId!}
                         serviceId={serviceId!}

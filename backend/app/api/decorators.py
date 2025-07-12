@@ -50,6 +50,18 @@ def audit_operation(
             if not is_feature_enabled(FeatureFlag.USE_DECORATOR_PATTERN):
                 return await func(*args, **kwargs)
             
+            # For delete operations, extract resource ID from path
+            pre_delete_resource_id = None
+            if request and action and "delete" in action.lower() and request.method == "DELETE":
+                path_params = request.path_params
+                # Try common patterns for resource ID in path
+                pre_delete_resource_id = (
+                    path_params.get(f"{resource_type}_id") or 
+                    path_params.get("id") or
+                    path_params.get("host_id") or
+                    path_params.get("resource_id")
+                )
+            
             try:
                 # Execute the function
                 result = await func(*args, **kwargs)
@@ -66,6 +78,10 @@ def audit_operation(
                         except Exception as e:
                             logger.warning(f"Failed to extract resource ID: {e}")
                     
+                    # Use pre-delete resource ID if we don't have one from result
+                    if not resource_id and pre_delete_resource_id:
+                        resource_id = pre_delete_resource_id
+                    
                     # Build audit details
                     details = {
                         "endpoint": str(request.url),
@@ -79,6 +95,12 @@ def audit_operation(
                                 details["request_body"] = request._json
                         except Exception:
                             pass
+                    
+                    # Add delete operation marker
+                    if request.method == "DELETE":
+                        details["operation_type"] = "delete"
+                        if result and isinstance(result, dict):
+                            details["deleted_resource_info"] = result
                     
                     # Log the audit event
                     await audit_service.log(
@@ -96,14 +118,22 @@ def audit_operation(
                 # Log error in audit trail
                 if request and user and db:
                     audit_service = AuditService(db)
+                    
+                    # Use pre-delete resource ID for delete operations
+                    error_resource_id = None
+                    if pre_delete_resource_id:
+                        error_resource_id = pre_delete_resource_id
+                    
                     await audit_service.log(
                         user=user,
                         action=action,
                         request=request,
                         resource_type=resource_type,
+                        resource_id=error_resource_id,
                         details={
                             "error": str(e),
-                            "error_type": type(e).__name__
+                            "error_type": type(e).__name__,
+                            "operation_type": "delete" if request.method == "DELETE" else None
                         }
                     )
                 raise

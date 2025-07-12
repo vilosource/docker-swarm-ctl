@@ -934,7 +934,14 @@ class UnifiedDockerService:
     ) -> List[TaskData]:
         """List tasks for a service"""
         task_tuples = await self._executor.list_service_tasks(service_id, filters, host_id)
-        return [TaskData(task.attrs, host_id) for task, host_id in task_tuples]
+        result = []
+        for task, resolved_host_id in task_tuples:
+            # Handle both task objects and dicts
+            if isinstance(task, dict):
+                result.append(TaskData(task, resolved_host_id))
+            else:
+                result.append(TaskData(task.attrs, resolved_host_id))
+        return result
     
     # Secret operations
     async def create_secret(

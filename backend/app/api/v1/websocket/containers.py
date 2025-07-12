@@ -205,125 +205,25 @@ async def container_logs_ws(
     host_id: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db)
 ):
-    """WebSocket endpoint for streaming container logs"""
-    # Authenticate user
-    user, error = await authenticate_websocket_user(token, db)
-    if not user:
-        await websocket.accept()
-        await websocket.close(code=1008, reason=error)
-        return
+    """
+    WebSocket endpoint for streaming container logs.
     
-    # Check permissions
-    if not check_permission(user, "viewer"):
-        await websocket.accept()
-        await websocket.close(code=1008, reason="Insufficient permissions")
-        return
+    This endpoint now uses the unified log streaming architecture,
+    ensuring consistency with service logs and other log sources.
+    """
+    from app.services.logs import LogSourceType
+    from app.api.v1.websocket.unified_logs import handle_log_websocket
     
-    db_session = None
-    suppress_logs = False
-    
-    try:
-        # Get Docker client
-        if host_id:
-            # Create new session for multi-host
-            db_session = AsyncSessionLocal()
-            db = await db_session.__aenter__()
-            docker_client = await get_docker_for_websocket(host_id, user, db)
-        else:
-            docker_client = await get_docker_for_websocket(None, user, db)
-        
-        # Check self-monitoring
-        self_monitoring = get_self_monitoring_service()
-        suppress_logs = self_monitoring.is_self_monitoring(container_id)
-        
-        if suppress_logs:
-            # Don't stream logs for self to prevent loops
-            await websocket.send_json({
-                "type": "info",
-                "message": "Log streaming disabled for backend container",
-                "timestamp": datetime.utcnow().isoformat()
-            })
-            
-            # Keep connection alive
-            while True:
-                await asyncio.sleep(30)
-                await websocket.send_json({"type": "ping"})
-            return
-        
-        # Register connection
-        if not await manager.connect(websocket, container_id, user.username, suppress_logs):
-            return
-        
-        # Send buffered logs if available
-        if container_id in log_buffers and tail > 0:
-            buffered = list(log_buffers[container_id])[-tail:]
-            for log_line in buffered:
-                await websocket.send_json({
-                    "type": "log",
-                    "timestamp": datetime.utcnow().isoformat(),
-                    "data": log_line,
-                    "container_id": container_id
-                })
-        
-        # Check if we're first connection
-        connection_count = manager.get_connection_count(container_id)
-        
-        if connection_count == 1:
-            # Start streaming logs
-            logger.info(f"Starting log stream for container {container_id}")
-            log_count = 0
-            
-            async for log_line in stream_container_logs(
-                container_id,
-                docker_client,
-                follow,
-                tail if not log_buffers.get(container_id) else 0,
-                timestamps
-            ):
-                # Broadcast to all connections
-                await manager.broadcast_to_container(container_id, {
-                    "type": "log",
-                    "timestamp": datetime.utcnow().isoformat(),
-                    "data": log_line,
-                    "container_id": container_id
-                })
-                log_count += 1
-            
-            logger.info(f"Log stream ended for {container_id}, sent {log_count} lines")
-        else:
-            # Wait for broadcasts
-            while True:
-                await asyncio.sleep(30)
-                await websocket.send_json({"type": "ping"})
-    
-    except WebSocketDisconnect:
-        logger.info(f"WebSocket disconnected for container {container_id}")
-    except Exception as e:
-        logger.error(f"Error in log WebSocket: {e}")
-        try:
-            await websocket.send_json({
-                "type": "error",
-                "message": str(e),
-                "timestamp": datetime.utcnow().isoformat()
-            })
-        except:
-            pass
-    finally:
-        # Cleanup
-        await manager.disconnect(websocket, container_id, suppress_logs)
-        
-        # Stop stream if last connection
-        if manager.get_connection_count(container_id) == 0:
-            if container_id in active_streams:
-                try:
-                    active_streams[container_id].close()
-                except:
-                    pass
-                del active_streams[container_id]
-        
-        # Close DB session
-        if db_session:
-            await db_session.__aexit__(None, None, None)
+    await handle_log_websocket(
+        websocket=websocket,
+        source_type=LogSourceType.CONTAINER,
+        resource_id=container_id,
+        host_id=host_id,
+        tail=tail,
+        follow=follow,
+        timestamps=timestamps,
+        token=token
+    )
 
 
 @router.websocket("/containers/{container_id}/stats")
