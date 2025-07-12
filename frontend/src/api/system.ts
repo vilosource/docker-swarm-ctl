@@ -140,6 +140,13 @@ export interface DiskUsage {
   layers_size: number
 }
 
+export interface CircuitBreakerStatus {
+  state: 'CLOSED' | 'OPEN' | 'HALF_OPEN'
+  failure_count: number
+  last_failure_time?: string
+  consecutive_successes: number
+}
+
 export const systemApi = {
   getInfo: async (hostId?: string) => {
     const response = await api.get<SystemInfo>('/system/info', { params: { host_id: hostId } })
@@ -158,6 +165,16 @@ export const systemApi = {
 
   prune: async (volumes = false, hostId?: string) => {
     const response = await api.post('/system/prune', null, { params: { volumes, host_id: hostId } })
+    return response.data
+  },
+
+  getCircuitBreakers: async () => {
+    const response = await api.get<Record<string, CircuitBreakerStatus>>('/system/circuit-breakers')
+    return response.data
+  },
+
+  resetCircuitBreaker: async (breakerName: string) => {
+    const response = await api.post(`/system/circuit-breakers/${breakerName}/reset`)
     return response.data
   }
 }

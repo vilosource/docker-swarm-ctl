@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { hostsApi } from '@/api/hosts'
 import { wizardsApi } from '@/api/wizards'
+import { systemApi } from '@/api/system'
 import { DockerHost, HostStatus } from '@/types'
 import { useAuthStore } from '@/store/authStore'
 import { useToast } from '@/hooks/useToast'
@@ -23,6 +24,24 @@ export default function Hosts() {
   const { data, isLoading, error } = useQuery({
     queryKey: ['hosts'],
     queryFn: () => hostsApi.list()
+  })
+
+  const { data: circuitBreakers } = useQuery({
+    queryKey: ['circuit-breakers'],
+    queryFn: () => systemApi.getCircuitBreakers(),
+    refetchInterval: 5000 // Refresh every 5 seconds
+  })
+
+  const resetCircuitBreakerMutation = useMutation({
+    mutationFn: (hostId: string) => systemApi.resetCircuitBreaker(`docker-host-${hostId}`),
+    onSuccess: (_, hostId) => {
+      showToast('Circuit breaker reset successfully', 'success')
+      queryClient.invalidateQueries({ queryKey: ['circuit-breakers'] })
+      queryClient.invalidateQueries({ queryKey: ['hosts'] })
+    },
+    onError: (error) => {
+      showToast('Failed to reset circuit breaker', 'error')
+    }
   })
 
   const testConnectionMutation = useMutation({
@@ -110,6 +129,17 @@ export default function Hosts() {
     } else {
       showToast('No pending setup found for this host', 'error')
     }
+  }
+
+  const getCircuitBreakerStatus = (hostId: string) => {
+    if (!circuitBreakers) return null
+    const breakerName = `docker-host-${hostId}`
+    return circuitBreakers[breakerName]
+  }
+
+  const isCircuitBreakerOpen = (hostId: string) => {
+    const status = getCircuitBreakerStatus(hostId)
+    return status?.state === 'OPEN'
   }
 
   if (isLoading) {
@@ -201,7 +231,14 @@ export default function Hosts() {
                             <br />
                             <small className="text-muted">{host.connection_type.toUpperCase()}</small>
                           </td>
-                          <td>{getStatusBadge(host.status)}</td>
+                          <td>
+                            {getStatusBadge(host.status)}
+                            {isCircuitBreakerOpen(host.id) && (
+                              <span className="badge bg-warning ms-2" title="Circuit breaker is open">
+                                <i className="mdi mdi-alert"></i> Circuit Open
+                              </span>
+                            )}
+                          </td>
                           <td>
                             {host.docker_version ? (
                               <div>
@@ -232,6 +269,16 @@ export default function Hosts() {
                                 </button>
                               ) : (
                                 <>
+                                  {isCircuitBreakerOpen(host.id) && (
+                                    <button
+                                      className="btn btn-warning"
+                                      onClick={() => resetCircuitBreakerMutation.mutate(host.id)}
+                                      disabled={resetCircuitBreakerMutation.isPending}
+                                      title="Reset Circuit Breaker"
+                                    >
+                                      <i className="mdi mdi-refresh"></i> Reset
+                                    </button>
+                                  )}
                                   <button
                                     className="btn btn-light"
                                     onClick={() => navigate(`/hosts/${host.id}/swarm`)}
